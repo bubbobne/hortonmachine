@@ -145,7 +145,9 @@ public class WaterBudgetCalibration {
 		pm.message("Best cost = " + cost);
 		pm.message("Best params = " + Arrays.toString(best));
 		
-		return best;
+		double[] bestWithCost = Arrays.copyOf(best, best.length + 1);
+		bestWithCost[best.length] = cost;
+		return bestWithCost;
 	}
 
 }

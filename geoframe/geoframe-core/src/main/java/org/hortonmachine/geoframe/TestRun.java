@@ -4,16 +4,10 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.KeyEvent;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -82,174 +76,104 @@ import org.locationtech.jts.geom.Polygon;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
-public class TestCalibration extends HMModel {
+public class TestRun extends HMModel {
 
-	public TestCalibration() throws Exception {
+	public TestRun() throws Exception {
 
-	    String[] scales = {"15", "12", "9", "6", "3"};
-		//String[] scales = {"15"};
-	    int nRunsPerScale = 10;
+		String geoframeGpkg = "/home/andreisd/Documents/project/uni/NON_SCALE/transform_hm/km3/basin_km3.gpkg";
 
-	    Path outCsv = Path.of("/home/andreisd/Documents/project/uni/NON_SCALE/pso_bestparams_allscales_befana2.csv");
+		String envDataPath = "/home/andreisd/Documents/project/uni/NON_SCALE/transform_hm/km3/data_km3.sql";
 
-	    int globalId = 41;
+//		if (!toDo(geoframeGpkg)) {
+//			new File(geoframeGpkg).delete();
+//		}
+		ASpatialDb db = EDb.GEOPACKAGE.getSpatialDb();
+		db.open(geoframeGpkg);
 
-	    for (String scale : scales) {
-	        String scaleKey = scale + "km";
+		ADb envDb = EDb.SQLITE.getDb();
+		envDb.open(envDataPath);
 
-	        String geoframeGpkg = "/home/andreisd/Documents/project/uni/NON_SCALE/transform_hm/km" + scale
-	                + "/basin_km" + scale + ".gpkg";
+		try {
 
-	        String envDataPath = "/home/andreisd/Documents/project/uni/NON_SCALE/transform_hm/km" + scale
-	                + "/data_km" + scale + ".sql";
+			// TODO here a potential evapotrans comes in
 
-	        for (int run = 1; run <= nRunsPerScale; run++) {
+			// get the max basin id from the db
+			int maxBasinId = db.getLong("select max(basinid) from " + GeoframeUtils.GEOFRAME_BASIN_TABLE).intValue();
 
-	            // ========== (A) APRI DB OGNI RUN ==========
-	            ASpatialDb db = EDb.GEOPACKAGE.getSpatialDb();
-	            db.open(geoframeGpkg);
+			// get the basins from the db and their areas
+			QueryResult queryResult = db.getTableRecordsMapIn(GeoframeUtils.GEOFRAME_BASIN_TABLE, null, -1, -1, null);
+			double[] basinAreas = new double[maxBasinId + 1];
+			int idIndex = queryResult.names.indexOf("basinid");
+			for (int i = 0; i < queryResult.data.size(); i++) {
+				Object[] row = queryResult.data.get(i);
+				int basinId = (int) row[idIndex];
+				Geometry basinGeom = (Geometry) row[queryResult.geometryIndex];
+				double area = basinGeom.getArea() / 1_000_000.0; // in km2
+				basinAreas[basinId] = area;
+			}
 
-	            ADb envDb = EDb.SQLITE.getDb();
-	            envDb.open(envDataPath);
+			// get the topology from the db
+			TopologyNode rootNode = TopologyUtilities.getRootNodeFromDb(db, "153000");
 
-	            double[] bestParams = null;
+			//////////////////////////////////////////////////
+			/// PARAMETERS
+			//////////////////////////////////////////////////
+			String fromTS = "2015-08-01 01:00:00";
+			String toTS = "2023-12-31 23:00:00";
+			var timeStepMinutes = 60; // time step in minutes
+			int spinUpDays = 520;
+			double[] observedDischarge = getObservedDischarge(envDb, fromTS, toTS);
 
-	            try {
-	                // ---- setup minimo per quella run (uguale al tuo) ----
-	                int maxBasinId = db.getLong("select max(basinid) from " + GeoframeUtils.GEOFRAME_BASIN_TABLE).intValue();
+			var precipReader = new GeoframeEnvDatabaseIterator(maxBasinId);
+			precipReader.db = envDb;
+			precipReader.pParameterId = 2; // precip
+			precipReader.tStart = fromTS;
+			precipReader.tEnd = toTS;
 
-	                QueryResult queryResult = db.getTableRecordsMapIn(GeoframeUtils.GEOFRAME_BASIN_TABLE, null, -1, -1, null);
-	                double[] basinAreas = new double[maxBasinId + 1];
-	                int idIndex = queryResult.names.indexOf("basinid");
-	                for (int i = 0; i < queryResult.data.size(); i++) {
-	                    Object[] row = queryResult.data.get(i);
-	                    int basinId = (int) row[idIndex];
-	                    Geometry basinGeom = (Geometry) row[queryResult.geometryIndex];
-	                    double area = basinGeom.getArea() / 1_000_000.0;
-	                    basinAreas[basinId] = area;
-	                }
+			var tempReader = new GeoframeEnvDatabaseIterator(maxBasinId);
+			tempReader.db = envDb;
+			tempReader.pParameterId = 4; // temperature
+			tempReader.tStart = fromTS;
+			tempReader.tEnd = toTS;
 
-	                TopologyNode rootNode = TopologyUtilities.getRootNodeFromDb(db, "153000");
+			var etpReader = new GeoframeEnvDatabaseIterator(maxBasinId);
+			etpReader.db = envDb;
+			etpReader.pParameterId = 1; // etp
+			etpReader.tStart = fromTS;
+			etpReader.tEnd = toTS;
 
-	                String fromTS = "2015-08-01 01:00:00";
-	                String toTS   = "2019-10-31 23:00:00";
-	                int timeStepMinutes = 60;
-	                int spinUpDays = 1;
+			IWaterBudgetSimulationRunner runner = new WaterSimulationRunner();
+			int spinUpTimesteps = (24 * 60 / timeStepMinutes) * spinUpDays;
 
-	                double[] observedDischarge = getObservedDischarge(envDb, fromTS, toTS);
-	                int calibrationThreadCount = 2;
-	                CostFunctions costFunction = CostFunctions.KGE;
+			// best for km15
+			//double[] params = {1.0000000000,1.0000000000,0.0000000000,1.2208799735,0.0029708824,0.0450938494,0.6000000000,1.0000000000,343.2155141824,0.0005176691,1.0000000000,0.5012981187,112.6791257729,0.1000037657,1.0000000000,219.8412995250,0.0018663978,1.0000000000};
+		
+			// best for km12
+			 //double[] params = {1.0000000000,1.0000000000,0.0000000000,1.2007258533,0.5497738940,0.1235281152,0.6000000000,1.0000000000,172.3268657857,0.0019165033,1.0000000000,0.5364646072,30.3415507158,0.1000118197,1.0000000000,1458.4739890743,0.0000762617,1.0000000000};
 
-	                var precipReader = new GeoframeEnvDatabaseIterator(maxBasinId);
-	                precipReader.db = envDb;
-	                precipReader.pParameterId = 2;
-	                precipReader.tStart = fromTS;
-	                precipReader.tEnd = toTS;
-	                precipReader.preCacheData();
+			// best for km9
+			 //double[] params = {1.0000000000,1.0000000000,0.0000000000,1.6104233887,0.9767780168,0.2990868935,0.6000000000,1.0000000000,102.9738570288,0.0051373740,1.0000000000,0.5215370248,56.3198292830,0.1003605335,1.0000000000,2499.9923867576,0.0000608434,1.0000000000};
 
-	                var tempReader = new GeoframeEnvDatabaseIterator(maxBasinId);
-	                tempReader.db = envDb;
-	                tempReader.pParameterId = 4;
-	                tempReader.tStart = fromTS;
-	                tempReader.tEnd = toTS;
-	                tempReader.preCacheData();
+			// best for km6
+			 //double[] params = {1.0000000000,1.0000000000,0.0000000000,1.4242516051,0.5592772943,0.1475550062,0.6000000000,1.0000000000,194.6222229412,0.0015901415,1.0000000000,0.6949559192,119.9859420040,0.1000002746,1.0000000000,2499.9978217478,0.0000669369,1.0000000000};
 
-	                var etpReader = new GeoframeEnvDatabaseIterator(maxBasinId);
-	                etpReader.db = envDb;
-	                etpReader.pParameterId = 1;
-	                etpReader.tStart = fromTS;
-	                etpReader.tEnd = toTS;
-	                etpReader.preCacheData();
+			// best for km3
+			double[] params =  {1.0000000000,1.0000000000,0.0000000000,2.2407266384,0.3644761049,0.1421526326,0.6000000000,1.0000000000,325.2391698296,0.0010786613,1.0000000000,1.1409882949,60.6108790792,0.1021049142,1.0000000000,1318.1485190036,0.0000500655,1.0000000000};
 
-	                IWaterBudgetSimulationRunner runner = new WaterSimulationRunner();
-	                int spinUpTimesteps = (24 * 60 / timeStepMinutes) * spinUpDays;
+			runSimulationOnParams(db, maxBasinId, basinAreas, rootNode, fromTS, timeStepMinutes, observedDischarge,
+					precipReader, tempReader, etpReader, runner, spinUpTimesteps, params);
 
-	                PSConfig psConfig = new PSConfig();
-	                psConfig.particlesNum = 20;
-	                psConfig.maxIterations = 100;
-	                psConfig.c1 = 2.0;
-	                psConfig.c2 = 2.0;
-	                psConfig.w0 = 0.9;
-	                psConfig.decay = 0.9;
-
-	                bestParams = WaterBudgetCalibration.psoCalibration(
-	                        psConfig, maxBasinId, basinAreas, rootNode,
-	                        timeStepMinutes, observedDischarge, costFunction, calibrationThreadCount,
-	                        precipReader, tempReader, etpReader, runner, spinUpTimesteps, pm
-	                );
-
-	            } finally {
-	                // ========== (B) CHIUDI DB OGNI RUN ==========
-	                db.close();
-	                envDb.close();
-	            }
-
-	            // ========== (C) APRI/CHIUDI CSV OGNI RUN (APPEND) ==========
-	            appendOneRow(outCsv, globalId, scaleKey, bestParams);
-
-	            // log progresso super leggibile
-	            System.out.println("DONE id=" + globalId + " scale=" + scaleKey + " run=" + run);
-
-	            globalId++;
-	        }
-	    }
-	}
-
-	
-	private static final String[] CSV_HEADER = {
-		    "id","scale",
-		    "alfa_r","alfa_s","meltingTemperature","combinedMeltingFactor","freezingFactor","alfa_l",
-		    "kc","p","s_RootZoneMax","g","h","pB_soil","sRunoffMax","c","d","s_GroundWaterMax","e","f",
-		    "kge"
-		};
-	
-	
-	private static void appendOneRow(Path outCsv, int id, String scaleKey, double[] params) throws IOException {
-
-	    boolean writeHeader = !Files.exists(outCsv) || Files.size(outCsv) == 0;
-
-	    try (BufferedWriter w = Files.newBufferedWriter(
-	            outCsv,
-	            StandardOpenOption.CREATE,
-	            StandardOpenOption.APPEND
-	    )) {
-	        if (writeHeader) {
-	            w.write(String.join(",", CSV_HEADER));
-	            w.newLine();
-	        }
-
-	        // riga nulla
-	        if (params == null) {
-	            w.write(id + "," + scaleKey + ",NULL");
-	            w.newLine();
-	            return;
-	        }
-
-	        // Atteso: 19 valori (18 params + kge) = CSV_HEADER.length - 2
-	        int expected = CSV_HEADER.length - 2;
-
-	        if (params.length != expected) {
-	            // Scrivo comunque una riga diagnosticabile senza rompere tutto
-	            w.write(id + "," + scaleKey + ",WRONG_LEN_" + params.length + "_EXPECTED_" + expected);
-	            w.newLine();
-	            return;
-	        }
-
-	        StringBuilder row = new StringBuilder();
-	        row.append(id).append(",").append(scaleKey);
-	        for (double v : params) {
-	            row.append(",").append(String.format(Locale.US, "%.10f", v));
-	        }
-	        w.write(row.toString());
-	        w.newLine();
-	    }
+		} finally {
+			db.close();
+			envDb.close();
+		}
 	}
 
 	private void runSimulationOnParams(ASpatialDb db, int maxBasinId, double[] basinAreas, TopologyNode rootNode,
 			String fromTS, int timeStepMinutes, double[] observedDischarge, GeoframeEnvDatabaseIterator precipReader,
 			GeoframeEnvDatabaseIterator tempReader, GeoframeEnvDatabaseIterator etpReader,
 			IWaterBudgetSimulationRunner runner, int spinUpTimesteps, double[] params) throws Exception {
-		runner.configure(timeStepMinutes, maxBasinId, rootNode, basinAreas, true, true, db, pm);
+		runner.configure(timeStepMinutes, maxBasinId, rootNode, basinAreas, false, true, db, pm);
 		WaterBudgetParameters wbParams = WaterBudgetParameters.fromParameterArray(params);
 
 		// run a single simulation with default parameters
@@ -366,7 +290,7 @@ public class TestCalibration extends HMModel {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new TestCalibration();
+		new TestRun();
 	}
 
 }

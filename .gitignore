@@ -21,3 +21,6 @@ gpserver/*.so
 bin/
 .DS_Store
 .vscode
+
+# nested repo (do not track)
+geoframe/geoframe-geoet/upstream/

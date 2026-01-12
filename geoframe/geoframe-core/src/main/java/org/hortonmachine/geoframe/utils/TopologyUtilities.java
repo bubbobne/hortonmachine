@@ -10,7 +10,17 @@ import org.hortonmachine.hmachine.utils.GeoframeUtils;
 public class TopologyUtilities {
 
 	public static TopologyNode getRootNodeFromDb(ADb db) throws Exception {
-		QueryResult result = db.getTableRecordsMapFromRawSql("select * from " + GeoframeUtils.GEOFRAME_TOPOLOGY_TABLE,
+		String query = "select * from " + GeoframeUtils.GEOFRAME_TOPOLOGY_TABLE;
+		return TopologyUtilities.getsTopology(db, query);
+	}
+	
+	 public static TopologyNode getRootNodeFromDb(ADb db, String streamGaugeName) throws Exception {
+		String query = "select * from " + GeoframeUtils.GEOFRAME_TOPOLOGY_TABLE+"_"+streamGaugeName;
+		return TopologyUtilities.getsTopology(db, query);
+	}
+	
+	 private static TopologyNode getsTopology(ADb db, String query ) throws Exception {
+		QueryResult result = db.getTableRecordsMapFromRawSql(query,
 				-1);
 		int fromIndex = result.names.indexOf(GeoframeUtils.GEOFRAME_TOPOLOGY_FIELD_FROM);
 		int toIndex = result.names.indexOf(GeoframeUtils.GEOFRAME_TOPOLOGY_FIELD_TO);
@@ -37,5 +47,12 @@ public class TopologyUtilities {
 		TopologyNode rootNode = TopologyNode.getRootNode(topologyBasinsMap.values().stream().findFirst().get());
 		return rootNode;
 	}
+	
+	
+	
+	
+	
+	
+	
 
 }

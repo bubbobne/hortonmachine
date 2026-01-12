@@ -78,15 +78,15 @@ public class WaterBudgetParameters {
 		public double meltingTemperature = 0.0;
 
 		public static double[] alphaRRange() {
-			return new double[] { 0.8, 1.5 };
+			return new double[] { 1.0, 1.0 };
 		}
 
 		public static double[] alphaSRange() {
-			return new double[] { 0.8, 1.5 };
+			return new double[] { 1.0, 1.0 };
 		}
 
 		public static double[] meltingTemperatureRange() {
-			return new double[] { -1.0, 3.0 };
+			return new double[] { 0.0, 0.0 };
 		}
 	}
 
@@ -105,7 +105,7 @@ public class WaterBudgetParameters {
 		public double alfa_l = 0.2;
 
 		public static double[] combinedMeltingFactorRange() {
-			return new double[] { 0.0001, 2.0 };
+			return new double[] { 1.0, 10.0 };
 		}
 
 		public static double[] freezingFactorRange() {
@@ -113,7 +113,7 @@ public class WaterBudgetParameters {
 		}
 
 		public static double[] alfaLRange() {
-			return new double[] { 0.001, 0.5 };
+			return new double[] { 0.1, 0.6 };
 		}
 	}
 
@@ -125,14 +125,14 @@ public class WaterBudgetParameters {
 		/**
 		 * Partitioning coefficient free throughfall [-]
 		 */
-		public double p = 0.4;
+		public double p = 1.0;
 
 		public static double[] kcRange() {
-			return new double[] { 0.1, 0.9 };
+			return new double[] { 0.6, 0.6 };
 		}
 
 		public static double[] pRange() {
-			return new double[] { 0.5, 0.98 };
+			return new double[] { 1, 1 };
 		}
 
 	}
@@ -141,7 +141,7 @@ public class WaterBudgetParameters {
 		/**
 		 * Maximum value of the rootzone water storage [mm]
 		 */
-		public double s_RootZoneMax = 150.0;
+		public double s_RootZoneMax = 220.0;
 		/**
 		 * Maximum percolation rate [-]
 		 */
@@ -149,22 +149,22 @@ public class WaterBudgetParameters {
 		/**
 		 * Exponential of non-linear reservoir model [-]
 		 */
-		public double h = 1.5;
+		public double h = 1.0;
 		/**
 		 * Degree of spatial variability of the soil moisture capacity [-]
 		 */
 		public double pB_soil = 2.0;
 
 		public static double[] sRootZoneMaxRange() {
-			return new double[] { 40.0, 250.0 };
+			return new double[] { 40.0, 300.0 };
 		}
 
 		public static double[] gRange() {
-			return new double[] { 0.000001, 3 };
+			return new double[] { 0.00001,  0.05 };
 		}
 
 		public static double[] hRange() {
-			return new double[] { 0.8, 1.0 };
+			return new double[] { 1.0, 1.0 };
 		}
 
 		public static double[] pBSoilRange() {
@@ -177,7 +177,7 @@ public class WaterBudgetParameters {
 		/**
 		 * Maximum runoff storage [mm]
 		 */
-		public double sRunoffMax = 60.0;
+		public double sRunoffMax = 50.0;
 		/**
 		 * Coefficient of the non-linear reservoir model [-]
 		 */
@@ -185,18 +185,18 @@ public class WaterBudgetParameters {
 		/**
 		 * Exponent of the non-linear reservoir model [-]
 		 */
-		public double d = 2.0;
+		public double d = 1.0;
 
 		public static double[] sRunoffMaxRange() {
-			return new double[] { 5.0, 100.0 };
+			return new double[] { 15.0, 180.0 };
 		}
 
 		public static double[] cRange() {
-			return new double[] { 0.000001, 5 };
+			return new double[] { 0.0001, 3 };
 		}
 
 		public static double[] dRange() {
-			return new double[] { 0.9, 1.0 };
+			return new double[] { 1.0, 1.0 };
 		}
 
 	}
@@ -205,26 +205,26 @@ public class WaterBudgetParameters {
 		/**
 		 * Maximum groundwater storage [mm]
 		 */
-		public double s_GroundWaterMax = 1000.0;
+		public double s_GroundWaterMax = 1200.0;
 		/**
 		 * Coefficient of the non-linear reservoir model [-]
 		 */
-		public double e = 0.002;
+		public double e = 0.0001;
 		/**
 		 * Exponent of the non-linear reservoir model [-]
 		 */
 		public double f = 1.0;
 
 		public static double[] sGroundWaterMaxRange() {
-			return new double[] { 100.0, 1000.0 };
+			return new double[] { 100.0, 2000.0 };
 		}
 
 		public static double[] eRange() {
-			return new double[] { 0.0000005, 2 };
+			return new double[] { 0.00001, 0.001 };
 		}
 
 		public static double[] fRange() {
-			return new double[] { 0.95, 1.0 };
+			return new double[] { 1.0, 1.0 };
 		}
 	}
 	

@@ -397,7 +397,8 @@ public class WaterBudgetSimulation extends HMModel {
 				wbSimParams.waterBudgetRootzone.g, //
 				wbSimParams.waterBudgetRootzone.h, //
 				basinAreaKm2, //
-				timeStepMinutes//
+				timeStepMinutes
+
 		);
 		initalConditionsRootzoneMap[basinId] = resultRZ.waterStorage();
 		
@@ -423,6 +424,9 @@ public class WaterBudgetSimulation extends HMModel {
 		if (isNovalue(quick_mm)) {
 			quick_mm = 0.0;
 		}
+		
+
+
 		WaterBudgetStepResult resultWB = WaterBudget.calculateWaterBudget(//
 				quick_mm, //
 				ci, //
