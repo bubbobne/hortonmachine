@@ -41,7 +41,7 @@
 		<dependency>
 			<groupId>org.hortonmachine</groupId>
 			<artifactId>hm-geoframe-erm</artifactId>
-			<version>${revision}</version>
+			<version>0.11.0-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 

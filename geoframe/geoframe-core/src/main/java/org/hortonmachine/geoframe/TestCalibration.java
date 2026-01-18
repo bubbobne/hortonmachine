@@ -86,8 +86,8 @@ public class TestCalibration extends HMModel {
 
 	public TestCalibration() throws Exception {
 
-	    String[] scales = {"15", "12", "9", "6", "3"};
-		//String[] scales = {"15"};
+	    //String[] scales = {"15", "12", "9", "6", "3"};
+		String[] scales = {"6"};
 	    int nRunsPerScale = 10;
 
 	    Path outCsv = Path.of("/home/andreisd/Documents/project/uni/NON_SCALE/pso_bestparams_allscales_befana2.csv");
@@ -134,10 +134,10 @@ public class TestCalibration extends HMModel {
 	                String fromTS = "2015-08-01 01:00:00";
 	                String toTS   = "2019-10-31 23:00:00";
 	                int timeStepMinutes = 60;
-	                int spinUpDays = 1;
+	                int spinUpDays = 180;
 
 	                double[] observedDischarge = getObservedDischarge(envDb, fromTS, toTS);
-	                int calibrationThreadCount = 2;
+	                int calibrationThreadCount = 5;
 	                CostFunctions costFunction = CostFunctions.KGE;
 
 	                var precipReader = new GeoframeEnvDatabaseIterator(maxBasinId);

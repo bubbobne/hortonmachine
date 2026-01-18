@@ -111,6 +111,13 @@ public class WaterBudgetState {
 				CREATE INDEX IF NOT EXISTS %s_timestamp_idx
 				ON %s (timestamp);
 				""".formatted(tableName, tableName);
+		
+		
+		
+		
+		
+		
+		
 
 		db.executeInsertUpdateDeleteSql(createTableSql);
 		db.executeInsertUpdateDeleteSql(createIndexBasin);
@@ -173,6 +180,13 @@ public class WaterBudgetState {
 				""".formatted(tableName);
 	}
 
+	
+	
+
+	
+	
+	
+	
 	public Object[] getInsertIntoDbObjects(int basinId, long timestamp) throws Exception {
 		return new Object[] { basinId, timestamp, separatedPrecipitationRain, separatedPrecipitationSnow,
 				solidWaterInitial, liquidWaterInitial, solidWaterFinal, liquidWaterFinal, swe, freezing, melting,
