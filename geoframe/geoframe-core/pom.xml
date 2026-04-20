@@ -29,20 +29,22 @@
 			<artifactId>hm-hmachine</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.hortonmachine</groupId>
-			<artifactId>hm-geoframe-rssep</artifactId>
-			<version>${revision}</version>
+			<groupId>org.geoframe</groupId>
+			<artifactId>snowmelting</artifactId>
+			<version>0.9.3</version>
 		</dependency>
-		<dependency>
-			<groupId>org.hortonmachine</groupId>
-			<artifactId>hm-geoframe-snowm</artifactId>
-			<version>${revision}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.hortonmachine</groupId>
-			<artifactId>hm-geoframe-erm</artifactId>
-			<version>${revision}</version>
-		</dependency>
+		
+		<dependency>    <groupId>org.geoframe</groupId>
+    <artifactId>rainsnowseparation</artifactId>
+    <version>0.9.3</version>
+</dependency>
+
+<dependency>    <groupId>org.geoframe</groupId>
+    <artifactId>erm</artifactId>
+    <version>1.1.2</version>
+</dependency>
+
+		
 	</dependencies>
 
 	<build>
@@ -64,15 +66,6 @@
 							a clean POM) -->
 							<createDependencyReducedPom>false</createDependencyReducedPom>
 
-							<artifactSet>
-								<includes>
-									<include>org.hortonmachine:hm-geoframe-rssep</include>
-									<include>org.hortonmachine:hm-geoframe-snowm</include>
-									<include>org.hortonmachine:hm-geoframe-erm</include>
-									<include>org.hortonmachine:hm-geoframe-cleq</include>
-									<include>org.hortonmachine:hm-geoframe-num</include>
-								</includes>
-							</artifactSet>
 
 							<!-- optional but nice: define final name -->
 							<!--
