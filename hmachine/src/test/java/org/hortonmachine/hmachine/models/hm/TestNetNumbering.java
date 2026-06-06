@@ -119,9 +119,13 @@ public class TestNetNumbering extends HMTestCase {
 
         GridCoverage2D netnumberingCoverage = netNumbering.outNetnum;
         GridCoverage2D subbasinsCoverage = netNumbering.outBasins;
-
-        checkMatrixEqual(netnumberingCoverage.getRenderedImage(), HMTestMaps.netNumberingChannelDataNN2, 0);
-        checkMatrixEqual(subbasinsCoverage.getRenderedImage(), HMTestMaps.basinDataNN2, 0);
+        /*
+         * WARNING:
+         * the original raster was HMTestMaps.netNumberingChannelDataNN2, now modify with HMTestMaps.netNumberingChannelDataNN2 
+         * see comment ModelsEngine line 720 in packages package org.hortonmachine.gears.libs.modules;
+         */
+        checkMatrixEqual(netnumberingCoverage.getRenderedImage(), HMTestMaps.netNumberingChannelDataNN1, 0);
+        checkMatrixEqual(subbasinsCoverage.getRenderedImage(), HMTestMaps.basinDataNN1, 0);
     }
 
     public void testNetnumberingMode3() throws Exception {
@@ -149,11 +153,16 @@ public class TestNetNumbering extends HMTestCase {
         netNumbering.pm = pm;
         netNumbering.process();
 
+        /*
+         * WARNING:
+         * the original raster was HMTestMaps.netNumberingChannelDataNN2, now modify with HMTestMaps.netNumberingChannelDataNN2 
+         * see comment ModelsEngine line 720 in packages package org.hortonmachine.gears.libs.modules;
+         */
         GridCoverage2D netnumberingCoverage = netNumbering.outNetnum;
         GridCoverage2D subbasinsCoverage = netNumbering.outBasins;
 
-        checkMatrixEqual(netnumberingCoverage.getRenderedImage(), HMTestMaps.netNumberingChannelDataNN3, 0);
-        checkMatrixEqual(subbasinsCoverage.getRenderedImage(), HMTestMaps.basinDataNN3, 0);
+        checkMatrixEqual(netnumberingCoverage.getRenderedImage(), HMTestMaps.netNumberingChannelDataNN1, 0);
+        checkMatrixEqual(subbasinsCoverage.getRenderedImage(), HMTestMaps.basinDataNN1, 0);
     }
 
 }

@@ -711,13 +711,54 @@ public class ModelsEngine {
 
 		HMRaster netnumRaster = new HMRaster.HMRasterWritableBuilder().setName("netnum").setTemplate(flowR)
 				.setInitialValue(0).setDoInteger(true).setNoValue(HMConstants.intNovalue).build();
-
 		/*
 		 * split nodes are points that create new numbering: - first points upstream on
 		 * net - confluences - supplied points
 		 */
 		List<FlowNodeNG> splitNodes = new ArrayList<>();
 		List<String> fixedNodesColRows = new ArrayList<>();
+
+		/*
+		 * IMPORTANT: Network-derived splits are processed before fixed/artificial
+		 * splits.
+		 *
+		 * If a fixed split coincides with a network split, the network split always
+		 * takes precedence. When adding fixed splits, we explicitly check that an
+		 * equivalent network split does not already exist.
+		 *
+		 * This guarantees that netNumbering raster IDs always start from 1 and avoids
+		 * area loss in edge cases where an artificial split is placed immediately
+		 * upstream of a natural network split.
+		 *
+		 * @todo Discuss whether network splits should always have
+		 * priority over fixed splits, or whether this behavior should be configurable.
+		 *  Also discuss if it's reasonable to start netnumbering always from 1. 
+		 *  I modify also the test case
+		 */
+		// FIND CONFLUENCES AND NETWORK STARTING POINTS (MOST UPSTREAM)
+		pm.beginTask("Find confluences...", rows);
+		for (int r = 0; r < rows; r++) {
+			for (int c = 0; c < cols; c++) {
+				GridNodeNG netNode = netR.getGridNodeNG(c, r);
+				if (netNode.isValid()) {
+					List<GridNodeNG> validSurroundingNodes = netNode.getValidSurroundingNodes();
+					FlowNodeNG currentflowNode = new FlowNodeNG(flowR, c, r);
+					int enteringCount = 0;
+					for (GridNodeNG gridNode : validSurroundingNodes) {
+						FlowNodeNG tmpNode = new FlowNodeNG(flowR, gridNode.col, gridNode.row);
+						List<FlowNodeNG> enteringNodes = currentflowNode.getEnteringNodes();
+						if (enteringNodes.contains(tmpNode)) {
+							enteringCount++;
+						}
+					}
+					if (enteringCount != 1) {
+						splitNodes.add(currentflowNode);
+					}
+				}
+			}
+			pm.worked(1);
+		}
+
 		// SUPPLIED POINTS
 		if (points != null) {
 			Envelope envelope = regionMap.toEnvelope();
@@ -746,7 +787,7 @@ public class ModelsEngine {
 						 * to be the basin outlet.
 						 */
 						FlowNodeNG flowNodeTmp = flowNode.goDownstream();
-						if (flowNodeTmp != null) {
+						if (flowNodeTmp != null && !splitNodes.contains(flowNodeTmp)) {
 							netNode = netR.getGridNodeNG(flowNodeTmp.col, flowNodeTmp.row);
 							if (netNode.isValid) {
 								splitNodes.add(flowNodeTmp);
@@ -757,34 +798,6 @@ public class ModelsEngine {
 				}
 			}
 		}
-
-		// FIND CONFLUENCES AND NETWORK STARTING POINTS (MOST UPSTREAM)
-		pm.beginTask("Find confluences...", rows);
-		for (int r = 0; r < rows; r++) {
-			for (int c = 0; c < cols; c++) {
-				GridNodeNG netNode = netR.getGridNodeNG(c, r);
-				if (netNode.isValid()) {
-					List<GridNodeNG> validSurroundingNodes = netNode.getValidSurroundingNodes();
-					FlowNodeNG currentflowNode = new FlowNodeNG(flowR, c, r);
-					int enteringCount = 0;
-					for (GridNodeNG gridNode : validSurroundingNodes) {
-						FlowNodeNG tmpNode = new FlowNodeNG(flowR, gridNode.col, gridNode.row);
-						List<FlowNodeNG> enteringNodes = currentflowNode.getEnteringNodes();
-						if (enteringNodes.contains(tmpNode)) {
-							enteringCount++;
-						}
-					}
-					if (enteringCount != 1) {
-						splitNodes.add(currentflowNode);
-					}
-				}
-			}
-			pm.worked(1);
-		}
-
-		Set<FlowNodeNG> unique = new LinkedHashSet<>(splitNodes);
-		splitNodes = new ArrayList<>(unique);
-
 
 		pm.done();
 		pm.message("Found split points: " + splitNodes.size());
