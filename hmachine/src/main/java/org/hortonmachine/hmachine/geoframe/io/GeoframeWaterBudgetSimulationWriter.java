@@ -46,6 +46,12 @@ import oms3.annotations.Status;
 @License("General Public License Version 3 (GPLv3)")
 public class GeoframeWaterBudgetSimulationWriter extends HMModel {
 
+	/**
+	 * Suggested fixed table name for callers that want to append across runs
+	 * instead of the default per-run timestamped table (see {@link #tableName}).
+	 */
+	public static final String FIXED_TABLE_NAME = "water_budget_simulation_discharge";
+
 	@Description("The db to use.")
 	@In
 	public ADb db = null;
@@ -58,11 +64,16 @@ public class GeoframeWaterBudgetSimulationWriter extends HMModel {
 	@In
 	public long currentT;
 
+	@Description("Name of the discharge output table. Defaults to a new per-run "
+			+ "timestamped table; pass a fixed name to append to the same table "
+			+ "across runs instead (e.g. a daily realtime job resuming from the "
+			+ "last simulated step).")
+	@In
+	public String tableName = "sim" + ETimeUtilities.INSTANCE.TIMESTAMPFORMATTER_UTC.format(new Date())
+			+ "_water_budget_simulation_discharge";
+
 	private IHMPreparedStatement ps;
 	private IHMConnection conn;
-
-	private String tableName = "sim" + ETimeUtilities.INSTANCE.TIMESTAMPFORMATTER_UTC.format(new Date())
-			+ "_water_budget_simulation_discharge";
 
 	public void clearTable() throws Exception {
 		if (db.hasTable(tableName)) {
@@ -81,7 +92,7 @@ public class GeoframeWaterBudgetSimulationWriter extends HMModel {
 				+ "basin_id INT NOT NULL, " + "value DOUBLE, " + "PRIMARY KEY (ts, basin_id) " + ");";
 		db.executeInsertUpdateDeleteSql(sql);
 
-		String insertSql = "INSERT INTO " + tableName + " (ts, basin_id, value) VALUES (?,?,?) ";
+		String insertSql = "INSERT OR REPLACE INTO " + tableName + " (ts, basin_id, value) VALUES (?,?,?) ";
 		conn = db.getConnectionInternal();
 		ps = conn.prepareStatement(insertSql);
 

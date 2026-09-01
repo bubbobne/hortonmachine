@@ -125,9 +125,9 @@ public class ErmStationDataImporter extends HMModel {
 	}
 
 	public static void main(String[] args) throws Exception {
-		String workspace = "/home/hydrologis/development/hm_models_testdata/geoframe/newage/noce/workspace/";
+		String workspace = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/";
 		ErmStationDataImporter ei = new ErmStationDataImporter();
-		ei.inGpkg = workspace + "outputs/geoframe_data.gpkg";
+		ei.inGpkg = workspace + "/basin_km9.gpkg";
 		ei.pStartTimestamp = ErmCommonData.START_TIMESTAMP;
 		ei.pEndTimestamp = ErmCommonData.END_TIMESTAMP;
 		ei.pTimeResolution = ErmCommonData.TIME_RESOLUTION;
