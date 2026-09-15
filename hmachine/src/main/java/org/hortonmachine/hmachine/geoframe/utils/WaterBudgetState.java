@@ -3,6 +3,8 @@ package org.hortonmachine.hmachine.geoframe.utils;
 import java.util.Date;
 
 import org.hortonmachine.dbs.compat.ADb;
+import org.hortonmachine.dbs.compat.ASpatialDb;
+import org.hortonmachine.dbs.compat.objects.QueryResult;
 import org.hortonmachine.gears.utils.time.ETimeUtilities;
 
 /**
@@ -53,11 +55,37 @@ public class WaterBudgetState {
 	
 	public static final WaterBudgetState DUMMY = new WaterBudgetState();
 
+	/**
+	 * Suggested fixed table name for callers that want to append across runs
+	 * instead of a new per-run timestamped table (see {@link #initTable(ADb, String)}).
+	 */
+	public static final String FIXED_TABLE_NAME = "water_budget_simulation_state";
+
+	/**
+	 * Creates (if needed) a new per-run, timestamped state table.
+	 *
+	 * <p>Use {@link #initTable(ADb, String)} with a fixed name instead when the
+	 * state must be appended to across runs (e.g. a daily realtime job resuming
+	 * from the last simulated step).</p>
+	 */
 	public static String initTable(ADb db) throws Exception {
 		// create table if not exists, with primary key on basin id and timestamp,
 		// and an index on basin_id and one on timestamp for faster queries
 		String tsStr = ETimeUtilities.INSTANCE.TIMESTAMPFORMATTER_UTC.format(new Date());
 		String tableName = "sim" + tsStr + "_water_budget_state";
+		return initTable(db, tableName);
+	}
+
+	/**
+	 * Creates (if needed) the state table with the given fixed name, with
+	 * primary key on basin id and timestamp, and an index on each for faster
+	 * queries.
+	 *
+	 * @param db        the database to create the table into
+	 * @param tableName the table name to use as-is (no timestamp is appended)
+	 * @return {@code tableName}, unchanged, for convenience
+	 */
+	public static String initTable(ADb db, String tableName) throws Exception {
 		String createTableSql = """
 				CREATE TABLE IF NOT EXISTS %s (
 				    basin_id INTEGER NOT NULL,
@@ -171,6 +199,63 @@ public class WaterBudgetState {
 				    ?, ?, ?
 				);
 				""".formatted(tableName);
+	}
+
+	/**
+	 * Loads the most recent state row of each basin from {@code tableName} into
+	 * a {@link WaterBudgetInitialConditions}, to resume a simulation from where
+	 * a previous run left off. A basin with no prior row falls back to the same
+	 * defaults {@link WaterBudgetInitialConditions#zero} uses.
+	 *
+	 * @param db         the database containing the state table
+	 * @param tableName  the state table to read from (see {@link #initTable(ADb, String)})
+	 * @param maxBasinId the maximum basin id (sizes the returned arrays)
+	 * @return the initial conditions to resume the simulation with
+	 */
+	public static WaterBudgetInitialConditions loadLastState(ASpatialDb db, String tableName, int maxBasinId)
+			throws Exception {
+		WaterBudgetInitialConditions conditions = WaterBudgetInitialConditions.zero(maxBasinId);
+		if (!db.hasTable(tableName)) {
+			return conditions;
+		}
+		String sql = """
+				SELECT s.basin_id, s.solid_water_final, s.liquid_water_final, s.canopy_final,
+				       s.rootzone_final, s.runoff_final, s.ground_final
+				FROM %1$s s
+				JOIN (SELECT basin_id, MAX(timestamp) AS max_ts FROM %1$s GROUP BY basin_id) m
+				  ON s.basin_id = m.basin_id AND s.timestamp = m.max_ts
+				""".formatted(tableName);
+		QueryResult result = db.getTableRecordsMapFromRawSql(sql, -1);
+		int basinIdIdx = result.names.indexOf("basin_id");
+		int solidIdx = result.names.indexOf("solid_water_final");
+		int liquidIdx = result.names.indexOf("liquid_water_final");
+		int canopyIdx = result.names.indexOf("canopy_final");
+		int rootzoneIdx = result.names.indexOf("rootzone_final");
+		int runoffIdx = result.names.indexOf("runoff_final");
+		int groundIdx = result.names.indexOf("ground_final");
+		for (Object[] row : result.data) {
+			int basinId = ((Number) row[basinIdIdx]).intValue();
+			if (basinId < 0 || basinId > maxBasinId) {
+				continue;
+			}
+			conditions.solidWater[basinId] = doubleOrDefault(row[solidIdx], 0.0);
+			conditions.liquidWater[basinId] = doubleOrDefault(row[liquidIdx], 0.0);
+			conditions.canopy[basinId] = doubleOrDefault(row[canopyIdx], Double.NaN);
+			conditions.rootzone[basinId] = doubleOrDefault(row[rootzoneIdx], Double.NaN);
+			conditions.runoff[basinId] = doubleOrDefault(row[runoffIdx], Double.NaN);
+			conditions.ground[basinId] = doubleOrDefault(row[groundIdx], Double.NaN);
+		}
+		return conditions;
+	}
+
+	/**
+	 * A stored {@code NaN} comes back as SQL {@code NULL} through the raw-query
+	 * path used here, so a missing value is read back as {@code defaultValue}
+	 * (matching {@link WaterBudgetInitialConditions#zero}'s own defaults) rather
+	 * than throwing.
+	 */
+	private static double doubleOrDefault(Object value, double defaultValue) {
+		return value instanceof Number number ? number.doubleValue() : defaultValue;
 	}
 
 	public Object[] getInsertIntoDbObjects(int basinId, long timestamp) throws Exception {

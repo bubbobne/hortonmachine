@@ -56,12 +56,34 @@ public interface IWaterBudgetSimulationRunner {
 	 * @param pm                     progress monitor for messages and progress
 	 *                               tracking.
 	 */
+	default void configure(int timeStepMinutes, int maxBasinId, TopologyNode rootNode, double[] basinAreas,
+			boolean doParallel, boolean doTopologicallyOrdered, boolean writeState, ADb outputDb,
+			IHMProgressMonitor pm) {
+		configure(timeStepMinutes, maxBasinId, rootNode, basinAreas, doParallel, doTopologicallyOrdered, writeState,
+				outputDb, pm, null, null);
+	}
+
+	/**
+	 * Same as {@link #configure(int, int, TopologyNode, double[], boolean, boolean, boolean, ADb, IHMProgressMonitor)},
+	 * additionally pinning the discharge/state output table names instead of
+	 * letting them default to a new per-run timestamped table - needed to
+	 * append to the same table across runs (e.g. a daily realtime job resuming
+	 * from the last simulated step).
+	 *
+	 * @param dischargeTableName fixed discharge table name, or {@code null} for
+	 *                           the default per-run timestamped table
+	 * @param stateTableName     fixed state table name, or {@code null} for the
+	 *                           default per-run timestamped table (only used
+	 *                           when {@code writeState} is {@code true})
+	 */
 	void configure(int timeStepMinutes, int maxBasinId, TopologyNode rootNode, double[] basinAreas, boolean doParallel,
-			boolean doTopologicallyOrdered, boolean writeState, ADb outputDb, IHMProgressMonitor pm);
+			boolean doTopologicallyOrdered, boolean writeState, ADb outputDb, IHMProgressMonitor pm,
+			String dischargeTableName, String stateTableName);
 
 	/**
 	 * Executes a water budget simulation for the given time interval and model
-	 * parameters.
+	 * parameters, starting from the default zero/NaN initial conditions (see
+	 * {@link WaterBudgetInitialConditions#zero}).
 	 *
 	 * @param wbParams      all paramters required by the water budget model.
 	 * @param lai           Leaf Area Index used by the canopy model.
@@ -74,9 +96,34 @@ public interface IWaterBudgetSimulationRunner {
 	 *         time.
 	 * @throws Exception
 	 */
-	double[] run(WaterBudgetParameters wbParams, double lai, GeoframeEnvDatabaseIterator precipReader,
+	default double[] run(WaterBudgetParameters wbParams, double lai, GeoframeEnvDatabaseIterator precipReader,
 			GeoframeEnvDatabaseIterator tempReader, GeoframeEnvDatabaseIterator etpReader, String iterationInfo)
-			throws Exception;
+			throws Exception {
+		return run(wbParams, lai, precipReader, tempReader, etpReader, iterationInfo, null);
+	}
+
+	/**
+	 * Executes a water budget simulation for the given time interval and model
+	 * parameters, optionally resuming from a previously persisted state instead
+	 * of the default zero/NaN initial conditions.
+	 *
+	 * @param wbParams          all paramters required by the water budget model.
+	 * @param lai               Leaf Area Index used by the canopy model.
+	 * @param precipReader      Iterator providing precipitation input data.
+	 * @param tempReader        Iterator providing temperature input data.
+	 * @param etpReader         Iterator providing evapotranspiration input data.
+	 * @param iterationInfo     String containing information about the current
+	 *                          iteration (for logging purposes).
+	 * @param initialConditions the state to resume the simulation from, or
+	 *                          {@code null} to use the default zero/NaN initial
+	 *                          conditions (e.g. a cold-start/calibration run).
+	 * @return Array containing the simulated discharge values at the root node over
+	 *         time.
+	 * @throws Exception
+	 */
+	double[] run(WaterBudgetParameters wbParams, double lai, GeoframeEnvDatabaseIterator precipReader,
+			GeoframeEnvDatabaseIterator tempReader, GeoframeEnvDatabaseIterator etpReader, String iterationInfo,
+			WaterBudgetInitialConditions initialConditions) throws Exception;
 
 	/**
 	 * Get the observed discharge values for the given node and time interval 

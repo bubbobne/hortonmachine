@@ -132,7 +132,10 @@ public class WaterBudgetSimulation extends HMModel {
 	
 	private int timestepIndex = 0;
 
-	private String stateTableName;
+	@Description("Fixed name of the state output table; when null, a new "
+			+ "per-run timestamped table is created instead (see WaterBudgetState#initTable).")
+	@In
+	public String stateTableName;
 
 	@Initialize
 	public void init() throws Exception {
@@ -148,7 +151,8 @@ public class WaterBudgetSimulation extends HMModel {
 				waterBudgetStates[node.basinId] = new WaterBudgetState();
 			});
 			if (stateDb != null) {
-				stateTableName = WaterBudgetState.initTable(stateDb);
+				stateTableName = (stateTableName != null) ? WaterBudgetState.initTable(stateDb, stateTableName)
+						: WaterBudgetState.initTable(stateDb);
 			}
 		}
 	}

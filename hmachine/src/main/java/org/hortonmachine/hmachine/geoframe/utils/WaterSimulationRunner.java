@@ -22,10 +22,13 @@ public class WaterSimulationRunner implements IWaterBudgetSimulationRunner {
 	private boolean doTopologicallyOrdered;
 	private boolean doParallel;
 	private boolean writeState = false;
+	private String dischargeTableName;
+	private String stateTableName;
 
 	@Override
 	public void configure(int timeStepMinutes, int maxBasinId, TopologyNode rootNode, double[] basinAreas,
-			boolean doParallel, boolean doTopologicallyOrdered, boolean writeState, ADb outputDb, IHMProgressMonitor pm) {
+			boolean doParallel, boolean doTopologicallyOrdered, boolean writeState, ADb outputDb,
+			IHMProgressMonitor pm, String dischargeTableName, String stateTableName) {
 		this.timeStepMinutes = timeStepMinutes;
 		this.maxBasinId = maxBasinId;
 		this.rootNode = rootNode;
@@ -35,12 +38,14 @@ public class WaterSimulationRunner implements IWaterBudgetSimulationRunner {
 		this.writeState = writeState;
 		this.outputDb = outputDb;
 		this.pm = pm;
+		this.dischargeTableName = dischargeTableName;
+		this.stateTableName = stateTableName;
 	}
 
 	@Override
 	public double[] run(WaterBudgetParameters wbParams, double lai, GeoframeEnvDatabaseIterator precipReader,
-			GeoframeEnvDatabaseIterator tempReader, GeoframeEnvDatabaseIterator etpReader, String iterationInfo)
-			throws Exception {
+			GeoframeEnvDatabaseIterator tempReader, GeoframeEnvDatabaseIterator etpReader, String iterationInfo,
+			WaterBudgetInitialConditions initialConditions) throws Exception {
 		TopologyNode localRootNode = rootNode.clone();
 		
 		if (pm == null) {
@@ -57,18 +62,14 @@ public class WaterSimulationRunner implements IWaterBudgetSimulationRunner {
 			resultsWriter = new GeoframeWaterBudgetSimulationWriter();
 			resultsWriter.db = outputDb;
 			resultsWriter.rootNode = localRootNode;
+			if (dischargeTableName != null) {
+				resultsWriter.tableName = dischargeTableName;
+			}
 		}
 
-		double[] initialConditionSolidWater = new double[maxBasinId + 1]; // ok init with 0s
-		double[] initialConditionLiquidWater = new double[maxBasinId + 1]; // ok init with 0s
-		double[] initalConditionsCanopyMap = new double[maxBasinId + 1];
-		Arrays.fill(initalConditionsCanopyMap, Double.NaN);
-		double[] initalConditionsRootzoneMap = new double[maxBasinId + 1];
-		Arrays.fill(initalConditionsRootzoneMap, Double.NaN);
-		double[] initalConditionsRunoffMap = new double[maxBasinId + 1];
-		Arrays.fill(initalConditionsRunoffMap, Double.NaN);
-		double[] initalConditionsGroundMap = new double[maxBasinId + 1];
-		Arrays.fill(initalConditionsGroundMap, Double.NaN);
+		if (initialConditions == null) {
+			initialConditions = WaterBudgetInitialConditions.zero(maxBasinId);
+		}
 
 		WaterBudgetSimulation wbSim = new WaterBudgetSimulation();
 		wbSim.pm = pm;
@@ -78,12 +79,12 @@ public class WaterSimulationRunner implements IWaterBudgetSimulationRunner {
 		wbSim.precipReader = precipReader;
 		wbSim.tempReader = tempReader;
 		wbSim.etpReader = etpReader;
-		wbSim.initialConditionSolidWater = initialConditionSolidWater;
-		wbSim.initialConditionLiquidWater = initialConditionLiquidWater;
-		wbSim.initalConditionsCanopyMap = initalConditionsCanopyMap;
-		wbSim.initalConditionsRootzoneMap = initalConditionsRootzoneMap;
-		wbSim.initalConditionsRunoffMap = initalConditionsRunoffMap;
-		wbSim.initalConditionsGroundMap = initalConditionsGroundMap;
+		wbSim.initialConditionSolidWater = initialConditions.solidWater;
+		wbSim.initialConditionLiquidWater = initialConditions.liquidWater;
+		wbSim.initalConditionsCanopyMap = initialConditions.canopy;
+		wbSim.initalConditionsRootzoneMap = initialConditions.rootzone;
+		wbSim.initalConditionsRunoffMap = initialConditions.runoff;
+		wbSim.initalConditionsGroundMap = initialConditions.ground;
 		wbSim.wbSimParams = wbParams;
 		wbSim.lai = lai;
 		wbSim.resultsWriter = resultsWriter;
@@ -91,6 +92,7 @@ public class WaterSimulationRunner implements IWaterBudgetSimulationRunner {
 		wbSim.doTopologically = doTopologicallyOrdered;
 		wbSim.doDebugMessages = outputDb != null;
 		wbSim.stateDb = writeState ? outputDb : null;
+		wbSim.stateTableName = stateTableName;
 
 		wbSim.init();
 		wbSim.process();
@@ -104,5 +106,6 @@ public class WaterSimulationRunner implements IWaterBudgetSimulationRunner {
 		}
 		return sim;
 	}
+
 
 }

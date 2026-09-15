@@ -22,6 +22,9 @@ public class StationSchema extends GeoAbstractSchema {
 	public enum Station implements TableField {
 		GEOM("the_geom", Point.class), //
 		ID("id", Integer.class), //
+		ACTUAL_ID("actual_id",String.class),//
+		PROVIDER("provider",String.class),//
+		NAME("name",String.class),//
 		ELEVATION("elevation", Double.class), //
 		BASIN_ID("basin_id", Integer.class), //
 		TYPE("type", String.class);
