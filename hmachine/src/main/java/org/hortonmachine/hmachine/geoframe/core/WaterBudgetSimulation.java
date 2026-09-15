@@ -99,10 +99,6 @@ public class WaterBudgetSimulation extends HMModel {
 	@In
 	public GeoframeWaterBudgetSimulationWriter resultsWriter;
 	
-	@Description("Dynamic array to store the most downstream node discharge over time")
-	@Out
-	public DynamicDoubleArray outRootNodeDischargeInTime = new DynamicDoubleArray(10000, 10000);
-	
 	/**
 	 * Optional state database to store results.
 	 * 
@@ -115,13 +111,23 @@ public class WaterBudgetSimulation extends HMModel {
 	 * Whether to do the parallel processing
 	 */
 	public boolean doParallel = true;
+	
 	/**
 	 * If parallel processing is chosen, whether to do it topologically (at nodes wait for upstream nodes to finish)
 	 */
 	public boolean doTopologically = true;
 	
+	@Description("Fixed name of the state output table; when null, a new "
+			+ "per-run timestamped table is created instead (see WaterBudgetState#initTable).")
+	@In
+	public String stateTableName;
+	
 	public int threadPoolSize = Runtime.getRuntime().availableProcessors();
 	
+	@Description("Dynamic array to store the most downstream node discharge over time")
+	@Out
+	public DynamicDoubleArray outRootNodeDischargeInTime = new DynamicDoubleArray(10000, 10000);
+
 	private TopologyNode[] basinid2nodeMap = null;
 	
 	private WaterBudgetState[] waterBudgetStates = null; 
@@ -131,12 +137,8 @@ public class WaterBudgetSimulation extends HMModel {
 	private String previousDay = null;
 	
 	private int timestepIndex = 0;
-
-	@Description("Fixed name of the state output table; when null, a new "
-			+ "per-run timestamped table is created instead (see WaterBudgetState#initTable).")
-	@In
-	public String stateTableName;
-
+	
+	
 	@Initialize
 	public void init() throws Exception {
 		if (basinid2nodeMap == null) {
