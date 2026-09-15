@@ -46,6 +46,10 @@ public abstract class ErmBase extends HMModel {
 	@In
 	public boolean doWriteState = false;
 
+	@Description("Specific out node")
+	@In
+	public int outBasinId = 0;
+
 	protected ASpatialDb db;
 
 	protected int maxBasinId;
@@ -66,8 +70,18 @@ public abstract class ErmBase extends HMModel {
 
 		maxBasinId = IWaterBudgetSimulationRunner.getMaxBasinId(db);
 		basinAreas = IWaterBudgetSimulationRunner.getBasinAreas(db, maxBasinId);
-		rootNode = TopologyUtilities.getRootNodeFromDb(db);
-		observedDischarge = IWaterBudgetSimulationRunner.getObservedDischarge(db, rootNode, inFromTimestamp, inToTimestamp);
+		TopologyNode dbRootNode = TopologyUtilities.getRootNodeFromDb(db);
+		if (outBasinId != 0) {
+			rootNode = TopologyNode.findNodeByBasinId(dbRootNode, outBasinId);
+			if (rootNode == null) {
+				throw new IllegalArgumentException(
+						"No basin with id " + outBasinId + " found in the topology of " + inGeopackagePath);
+			}
+		} else {
+			rootNode = dbRootNode;
+		}
+		observedDischarge = IWaterBudgetSimulationRunner.getObservedDischarge(db, rootNode, inFromTimestamp,
+				inToTimestamp);
 
 		var type = EnvironmentalVariableType.PRECIPITATION.getId();
 		precipReader = makeReader(db, maxBasinId, type, inFromTimestamp, inToTimestamp);
