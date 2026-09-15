@@ -94,7 +94,7 @@ public class ErmStationDataImporter extends HMModel {
 		gfImporter.doOverWrite = true;
 
 		// import TEMPERATURE
-		if (Files.exists(Path.of(inTemperaturesCsv))) {
+		if (inTemperaturesCsv != null && Files.exists(Path.of(inTemperaturesCsv))) {
 			gfImporter.inMeasurementsPointFilePath = inMeteoStations;
 			gfImporter.inMeasurementDataFilePath = inTemperaturesCsv;
 			gfImporter.stationType = StationType.METEO;
@@ -104,7 +104,7 @@ public class ErmStationDataImporter extends HMModel {
 
 		// import the precipitation
 		gfImporter.doOverWrite = false;
-		if (Files.exists(Path.of(inPrecipitationCsv))) {
+		if (inPrecipitationCsv != null && Files.exists(Path.of(inPrecipitationCsv))) {
 			gfImporter.inMeasurementsPointFilePath = null;
 			gfImporter.inMeasurementDataFilePath = inPrecipitationCsv;
 			gfImporter.stationType = StationType.METEO;
@@ -112,7 +112,7 @@ public class ErmStationDataImporter extends HMModel {
 			gfImporter.process();
 		}
 
-		if (Files.exists(Path.of(inStreamGauges))) {
+		if (inStreamGaugesCsv != null && Files.exists(Path.of(inStreamGaugesCsv))) {
 			gfImporter.inMeasurementDataFilePath = inStreamGaugesCsv;
 			gfImporter.inMeasurementsPointFilePath = inStreamGauges;
 			gfImporter.inIdField = pStreamGaugesIdField;
@@ -120,8 +120,7 @@ public class ErmStationDataImporter extends HMModel {
 			gfImporter.inVariableType = EnvironmentalVariableType.DISCHARGE.getId();
 			gfImporter.process();
 		}
-		
-		
+
 	}
 
 	public static void main(String[] args) throws Exception {
