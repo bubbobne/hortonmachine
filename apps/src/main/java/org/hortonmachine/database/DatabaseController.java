@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
@@ -50,8 +51,10 @@ import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 
@@ -92,6 +95,7 @@ import org.geotools.swing.JMapFrame.Tool;
 import org.h2.jdbc.JdbcBlob;
 import org.h2.jdbc.JdbcSQLException;
 import org.hortonmachine.HM;
+import org.hortonmachine.database.spi.IDbViewerActionProvider;
 import org.hortonmachine.database.tree.DatabaseTreeCellRenderer;
 import org.hortonmachine.database.tree.DatabaseTreeModel;
 import org.hortonmachine.dbs.compat.ADb;
@@ -197,6 +201,13 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
     protected SqlTemplatesAndActions sqlTemplatesAndActions;
     private HMMapframe mapFrame;
 
+    /**
+     * The {@link IDbViewerActionProvider}s (built-in or contributed by downstream projects
+     * through SPI) that recognized {@link #currentConnectedSqlDatabase} when it was opened, see
+     * {@link #refreshActiveActionProviders()}.
+     */
+    private final List<IDbViewerActionProvider> activeActionProviders = new ArrayList<>();
+
     private DatabaseTreeCellRenderer databaseTreeCellRenderer;
     private SwingWorker<Void, DatabaseLoadEvent> databaseLevelLoader;
 
@@ -207,6 +218,7 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
     private String currentDataTableName = null;
     private QueryResult currentQueryResult = null;
     private TableLevel currentDataTableLevel = null;
+    private String currentDataTableQuerySql = null;
     private DatabaseTreeView databaseTreeView;
     private SqlEditorView sqlEditorView;
     private DataTableView dataTableView;
@@ -1755,7 +1767,18 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
         JScrollPane scrollPane = new JScrollPane(textArea);
         scrollPane.setPreferredSize(new Dimension(450, 150));
 
-        int result = JOptionPane.showConfirmDialog(this, scrollPane,
+        int rowCount = table.getModel().getRowCount();
+
+        JPanel editPanel = new JPanel(new BorderLayout());
+        editPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JCheckBox applyToAllCheckbox = new JCheckBox(
+                "Apply this value to all " + rowCount + " records of the current query result");
+        if (rowCount > 1) {
+            editPanel.add(applyToAllCheckbox, BorderLayout.SOUTH);
+        }
+
+        int result = JOptionPane.showConfirmDialog(this, editPanel,
                 "Edit [" + colName + "]   (PK: " + pkColName + " = " + pkValue + ")",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
@@ -1781,7 +1804,17 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
 
         String sql = "UPDATE " + currentDataTableName + " SET \"" + colName + "\" = ? WHERE \"" + pkColName + "\" = ?";
         try {
-            currentConnectedSqlDatabase.executeInsertUpdateDeletePreparedSql(sql, new Object[]{newValueObj, pkValue});
+            if (applyToAllCheckbox.isSelected() && rowCount > 1) {
+                for( int r = 0; r < rowCount; r++ ) {
+                    Object rowPkValue = table.getModel().getValueAt(r, modelPkCol);
+                    if (rowPkValue == null || "NULL".equals(rowPkValue.toString())) {
+                        continue;
+                    }
+                    currentConnectedSqlDatabase.executeInsertUpdateDeletePreparedSql(sql, new Object[]{newValueObj, rowPkValue});
+                }
+            } else {
+                currentConnectedSqlDatabase.executeInsertUpdateDeletePreparedSql(sql, new Object[]{newValueObj, pkValue});
+            }
             refreshCurrentTableView();
         } catch (Exception ex) {
             GuiUtilities.showErrorMessage(this, "Error updating value: " + ex.getMessage());
@@ -1790,36 +1823,58 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
     }
 
     private void refreshCurrentTableView() {
-        if (currentDataTableLevel == null || currentConnectedSqlDatabase == null) {
+        if (currentConnectedSqlDatabase == null) {
             return;
         }
-        TableLevel tableLevel = currentDataTableLevel;
-        SwingWorker<QueryResult, Void> worker = new SwingWorker<>() {
-            @Override
-            protected QueryResult doInBackground() throws Exception {
-                if (currentConnectedSqlDatabase instanceof ASpatialDb) {
-                    return ((ASpatialDb) currentConnectedSqlDatabase).getTableRecordsMapIn(
-                            tableLevel.tableName.toSqlName(), null, SQL_ONSELECT_LIMIT, -1, null);
-                } else {
-                    return currentConnectedSqlDatabase.getTableRecordsMapFromRawSql(
-                            "select * from " + tableLevel.tableName.fixedDoubleName, SQL_ONSELECT_LIMIT);
+        if (currentDataTableLevel != null) {
+            TableLevel tableLevel = currentDataTableLevel;
+            SwingWorker<QueryResult, Void> worker = new SwingWorker<>() {
+                @Override
+                protected QueryResult doInBackground() throws Exception {
+                    if (currentConnectedSqlDatabase instanceof ASpatialDb) {
+                        return ((ASpatialDb) currentConnectedSqlDatabase).getTableRecordsMapIn(
+                                tableLevel.tableName.toSqlName(), null, SQL_ONSELECT_LIMIT, -1, null);
+                    } else {
+                        return currentConnectedSqlDatabase.getTableRecordsMapFromRawSql(
+                                "select * from " + tableLevel.tableName.fixedDoubleName, SQL_ONSELECT_LIMIT);
+                    }
                 }
-            }
 
-            @Override
-            protected void done() {
-                try {
-                    QueryResult qr = get();
-                    currentDataTableName = tableLevel.tableName.fixedDoubleName;
-                    currentDataTableLevel = tableLevel;
-                    loadDataViewer(qr);
-                } catch (Exception ex) {
-                    Logger.INSTANCE.insertError("", "Error refreshing table view", ex);
-                    GuiUtilities.showErrorMessage(DatabaseController.this, ex.getMessage());
+                @Override
+                protected void done() {
+                    try {
+                        QueryResult qr = get();
+                        currentDataTableName = tableLevel.tableName.fixedDoubleName;
+                        currentDataTableLevel = tableLevel;
+                        loadDataViewer(qr);
+                    } catch (Exception ex) {
+                        Logger.INSTANCE.insertError("", "Error refreshing table view", ex);
+                        GuiUtilities.showErrorMessage(DatabaseController.this, ex.getMessage());
+                    }
                 }
-            }
-        };
-        worker.execute();
+            };
+            worker.execute();
+        } else if (currentDataTableQuerySql != null) {
+            String sqlText = currentDataTableQuerySql;
+            SwingWorker<QueryResult, Void> worker = new SwingWorker<>() {
+                @Override
+                protected QueryResult doInBackground() throws Exception {
+                    return runSelectQueryWithEditSupport(sqlText, getLimit());
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        QueryResult qr = get();
+                        loadDataViewer(qr);
+                    } catch (Exception ex) {
+                        Logger.INSTANCE.insertError("", "Error refreshing table view", ex);
+                        GuiUtilities.showErrorMessage(DatabaseController.this, ex.getMessage());
+                    }
+                }
+            };
+            worker.execute();
+        }
     }
 
     protected void loadDataViewer( QueryResult queryResult ) {
@@ -2044,6 +2099,7 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
                     ((ASpatialDb) currentConnectedSqlDatabase).initSpatialMetadata(null);
                 }
                 sqlTemplatesAndActions = new SqlTemplatesAndActions(currentConnectedSqlDatabase.getType());
+                refreshActiveActionProviders();
 
                 showDatabaseTreeAndLoadLevelsAsync(currentConnectedSqlDatabase, false);
             } catch (Exception e) {
@@ -2066,8 +2122,8 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
 
     private void setRightTreeRenderer() {
         if (currentConnectedSqlDatabase != null) {
-            databaseTreeCellRenderer = new DatabaseTreeCellRenderer(currentConnectedSqlDatabase);
-        } 
+            databaseTreeCellRenderer = new DatabaseTreeCellRenderer(currentConnectedSqlDatabase, activeActionProviders);
+        }
         databaseTreeView._databaseTree.setCellRenderer(databaseTreeCellRenderer);
     }
 
@@ -2282,6 +2338,7 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
                     hadError = true;
                 }
                 sqlTemplatesAndActions = new SqlTemplatesAndActions(currentConnectedSqlDatabase.getType());
+                refreshActiveActionProviders();
                 showDatabaseTreeAndLoadLevelsAsync(currentConnectedSqlDatabase, true);
                 ConnectionData recentCd = new ConnectionData();
                 recentCd.dbType = dbType != null ? dbType.getCode() : -1;
@@ -2356,6 +2413,7 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
                 currentConnectedSqlDatabase.setCredentials(user, _pwd);
                 currentConnectedSqlDatabase.open(_urlString);
                 sqlTemplatesAndActions = new SqlTemplatesAndActions(currentConnectedSqlDatabase.getType());
+                refreshActiveActionProviders();
 
                 showDatabaseTreeAndLoadLevelsAsync(currentConnectedSqlDatabase, true);
                 ConnectionData recentCd = new ConnectionData();
@@ -2456,16 +2514,120 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
         if (currentConnectedSqlDatabase != null) {
             currentConnectedSqlDatabase.close();
             currentConnectedSqlDatabase = null;
-        } 
+        }
+        activeActionProviders.clear();
         dataTableView._recordCountTextfield.setText("");
 
         if (manually)
             PreferencesHandler.setPreference(DatabaseGuiUtils.HM_SPATIALITE_LAST_FILE, (String) null);
     }
 
+    /**
+     * Run a select query and, if it is a simple single-table select whose table has a
+     * primary key, enable in-place editing of the resulting records (as if the table
+     * had been selected from the tree).
+     */
+    private QueryResult runSelectQueryWithEditSupport( String sqlText, int limit ) throws Exception {
+        QueryResult queryResult = currentConnectedSqlDatabase.getTableRecordsMapFromRawSql(sqlText, limit);
+        String tableName = extractSingleTableName(sqlText);
+        if (tableName != null && applySingleTablePkIndex(queryResult, tableName)) {
+            currentDataTableName = tableName;
+            currentDataTableQuerySql = sqlText;
+        } else {
+            currentDataTableName = null;
+            currentDataTableQuerySql = null;
+        }
+        return queryResult;
+    }
+
+    /**
+     * If the sql text is a simple select on a single table (no joins, unions, sub-selects
+     * or comma-separated table lists), return the table name/token as found in the FROM
+     * clause (so it can be reused verbatim in an UPDATE statement). Returns <code>null</code>
+     * otherwise.
+     */
+    protected String extractSingleTableName( String sqlText ) {
+        if (sqlText == null) {
+            return null;
+        }
+        String sql = sqlText.trim();
+        while( sql.endsWith(";") ) {
+            sql = sql.substring(0, sql.length() - 1).trim();
+        }
+        String lower = sql.toLowerCase();
+        if (!lower.startsWith("select")) {
+            return null;
+        }
+        if (lower.contains(" join ") || lower.contains(" union ") || lower.contains(" group by ")
+                || lower.contains("(select") || lower.contains(" into ")) {
+            return null;
+        }
+
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\bfrom\\s+([^\\s,;()]+)",
+                java.util.regex.Pattern.CASE_INSENSITIVE).matcher(sql);
+        if (!m.find()) {
+            return null;
+        }
+        String tableToken = m.group(1);
+        String rest = sql.substring(m.end()).trim();
+        if (rest.startsWith(",")) {
+            // old style comma separated join -> multiple tables
+            return null;
+        }
+        if (m.find()) {
+            // a second FROM clause was found -> subquery or join
+            return null;
+        }
+
+        tableToken = tableToken.trim();
+        if (tableToken.length() >= 2) {
+            char first = tableToken.charAt(0);
+            char last = tableToken.charAt(tableToken.length() - 1);
+            if ((first == '"' && last == '"') || (first == '`' && last == '`')
+                    || (first == '[' && last == ']')) {
+                tableToken = tableToken.substring(1, tableToken.length() - 1);
+            }
+        }
+        return tableToken;
+    }
+
+    /**
+     * Look up the primary key column of the given table and, if it is present amongst the
+     * query result's columns, set {@link QueryResult#pkIndex} accordingly.
+     *
+     * @return <code>true</code> if a primary key column could be matched.
+     */
+    protected boolean applySingleTablePkIndex( QueryResult queryResult, String tableName ) {
+        if (currentConnectedSqlDatabase == null) {
+            return false;
+        }
+        try {
+            List<String[]> tableColumnsInfo = currentConnectedSqlDatabase.getTableColumns(tableName);
+            if (tableColumnsInfo == null || tableColumnsInfo.isEmpty()) {
+                return false;
+            }
+            Map<String, Boolean> pkMap = new HashMap<>();
+            for( String[] info : tableColumnsInfo ) {
+                pkMap.put(info[0].toLowerCase(), "1".equals(info[2]));
+            }
+            for( int i = 0; i < queryResult.names.size(); i++ ) {
+                String colName = queryResult.names.get(i);
+                Boolean isPk = pkMap.get(colName.toLowerCase());
+                if (isPk != null && isPk) {
+                    queryResult.pkIndex = i;
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // not a real/accessible table (view, alias, typo, ...) -> not editable
+        }
+        return false;
+    }
+
     protected boolean runQuery( String sqlText, IHMProgressMonitor pm ) {
         currentDataTableName = null;
         currentDataTableLevel = null;
+        currentDataTableQuerySql = null;
         if (pm == null) {
             pm = this.pm;
         }
@@ -2499,7 +2661,7 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
                         pm.message("Runnng in multi query mode, since a semicolon has been found.");
                         for( String sql : querySplit ) {
                             if (isSelectOrPragma(sql)) {
-                                QueryResult queryResult = currentConnectedSqlDatabase.getTableRecordsMapFromRawSql(sql, limit);
+                                QueryResult queryResult = runSelectQueryWithEditSupport(sql, limit);
                                 loadDataViewer(queryResult);
 //   TODO                         } else if (sql.toLowerCase().startsWith("copy ")) {
 //                                EDb type = currentConnectedDatabase.getType();
@@ -2543,7 +2705,7 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
                 }
 
                 if (isSelectOrPragma(sqlText)) {
-                    QueryResult queryResult = currentConnectedSqlDatabase.getTableRecordsMapFromRawSql(sqlText, limit);
+                    QueryResult queryResult = runSelectQueryWithEditSupport(sqlText, limit);
                     loadDataViewer(queryResult);
 
                     int size = queryResult.data.size();
@@ -2678,6 +2840,69 @@ public abstract class DatabaseController extends DatabaseView implements IOnClos
     protected abstract List<Action> makeDatabaseAction( final DbLevel dbLevel );
 
     protected abstract List<Action> makeTableAction( final TableLevel selectedTable );
+
+    /**
+     * Recomputes {@link #activeActionProviders} for {@link #currentConnectedSqlDatabase}, by
+     * asking every {@link IDbViewerActionProvider} on the classpath (built-in ones and any
+     * contributed by downstream projects through {@link ServiceLoader}) whether it recognizes
+     * this connection - once per connection, so per-click context menu building only has to
+     * consult providers that already matched instead of re-probing the schema on every popup.
+     */
+    protected void refreshActiveActionProviders() {
+        activeActionProviders.clear();
+        if (currentConnectedSqlDatabase == null) {
+            return;
+        }
+        for( IDbViewerActionProvider provider : ServiceLoader.load(IDbViewerActionProvider.class) ) {
+            try {
+                if (provider.supportsDatabase(currentConnectedSqlDatabase)) {
+                    activeActionProviders.add(provider);
+                }
+            } catch (Exception ex) {
+                Logger.INSTANCE.insertError("",
+                        "Error checking db-viewer action provider: " + provider.getClass().getName(), ex);
+            }
+        }
+    }
+
+    protected List<Action> getSpiDatabaseActions( DbLevel dbLevel ) {
+        return collectSpiActions(provider -> provider.getDatabaseActions(currentConnectedSqlDatabase, dbLevel, this));
+    }
+
+    protected List<Action> getSpiTableActions( TableLevel tableLevel ) {
+        return collectSpiActions(provider -> provider.getTableActions(currentConnectedSqlDatabase, tableLevel, this));
+    }
+
+    protected List<Action> getSpiColumnActions( ColumnLevel columnLevel ) {
+        return collectSpiActions(provider -> provider.getColumnActions(currentConnectedSqlDatabase, columnLevel, this));
+    }
+
+    protected List<Action> getSpiLeafActions( LeafLevel leafLevel ) {
+        return collectSpiActions(provider -> provider.getLeafActions(currentConnectedSqlDatabase, leafLevel, this));
+    }
+
+    private List<Action> collectSpiActions( Function<IDbViewerActionProvider, List<Action>> actionsExtractor ) {
+        List<Action> collected = new ArrayList<>();
+        for( IDbViewerActionProvider provider : activeActionProviders ) {
+            List<Action> providerActions = actionsExtractor.apply(provider);
+            if (providerActions == null || providerActions.isEmpty()) {
+                continue;
+            }
+            Icon icon = provider.getIcon();
+            if (icon != null) {
+                for( Action action : providerActions ) {
+                    if (action != null && action.getValue(Action.SMALL_ICON) == null) {
+                        action.putValue(Action.SMALL_ICON, icon);
+                    }
+                }
+            }
+            if (!collected.isEmpty() && collected.get(collected.size() - 1) != null) {
+                collected.add(null); // separator between different providers' actions
+            }
+            collected.addAll(providerActions);
+        }
+        return collected;
+    }
 
     protected void refreshDatabaseTree() throws Exception {
         if (currentConnectedSqlDatabase != null) {

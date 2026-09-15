@@ -20,16 +20,12 @@ package org.hortonmachine.database;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map.Entry;
 
-import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -45,29 +41,21 @@ import org.geotools.feature.DefaultFeatureCollection;
 import org.hortonmachine.dbs.compat.ASpatialDb;
 import org.hortonmachine.dbs.compat.ConnectionData;
 import org.hortonmachine.dbs.compat.EDb;
-import org.hortonmachine.dbs.compat.IHMResultSet;
-import org.hortonmachine.dbs.compat.IHMStatement;
 import org.hortonmachine.dbs.compat.objects.ColumnLevel;
 import org.hortonmachine.dbs.compat.objects.DbLevel;
 import org.hortonmachine.dbs.compat.objects.LeafLevel;
 import org.hortonmachine.dbs.compat.objects.TableLevel;
 import org.hortonmachine.dbs.geopackage.GeopackageCommonDb;
-import org.hortonmachine.dbs.log.EMessageType;
 import org.hortonmachine.dbs.log.LogDb;
-import org.hortonmachine.dbs.log.Message;
 import org.hortonmachine.dbs.spatialite.SpatialiteCommonMethods;
 import org.hortonmachine.dbs.utils.SqlName;
-import org.hortonmachine.database.addons.geoframe.GeoframeBasinChartAction;
-import org.hortonmachine.database.addons.geoframe.GeoframeChartAction;
-import org.hortonmachine.database.addons.geoframe.GeoframeSchema;
-import org.hortonmachine.database.addons.geoframe.GeoframeStationChartAction;
+import org.hortonmachine.dbs.utils.TimeseriesTableUtils;
+import org.hortonmachine.database.csv.ImportCsvAsNewTableAction;
+import org.hortonmachine.database.csv.ImportCsvIntoTableAction;
 import org.hortonmachine.gears.io.dbs.DbsHelper;
-import org.hortonmachine.gears.libs.modules.HMConstants;
 import org.hortonmachine.gears.libs.monitor.IHMProgressMonitor;
 import org.hortonmachine.gears.utils.PreferencesHandler;
 import org.hortonmachine.gears.utils.SldUtilities;
-import org.hortonmachine.gears.utils.files.FileUtilities;
-import org.hortonmachine.gears.utils.simplereport.HtmlReport;
 import org.hortonmachine.gui.console.LogConsoleController;
 import org.hortonmachine.gui.settings.SettingsController;
 import org.hortonmachine.gui.utils.DefaultGuiBridgeImpl;
@@ -80,7 +68,6 @@ import org.hortonmachine.nww.gui.NwwPanel;
 import org.hortonmachine.nww.gui.ToolsPanelController;
 import org.hortonmachine.nww.gui.ViewControlsLayer;
 import org.hortonmachine.nww.utils.NwwUtilities;
-import org.joda.time.DateTime;
 
 import gov.nasa.worldwind.avlist.AVKey;
 import gov.nasa.worldwind.util.Logging;
@@ -294,7 +281,18 @@ public class DatabaseViewer extends DatabaseController {
         List<Action> actions = new ArrayList<>();
         addIfNotNull(actions, sqlTemplatesAndActions.getUpdateValueAction(guiBridge, this));
 
+        appendSpiActions(actions, getSpiLeafActions(selectedLeaf));
         return actions;
+    }
+
+    private void appendSpiActions( List<Action> actions, List<Action> spiActions ) {
+        if (spiActions.isEmpty()) {
+            return;
+        }
+        if (!actions.isEmpty()) {
+            addSeparator(actions);
+        }
+        actions.addAll(spiActions);
     }
 
     protected List<Action> makeColumnActions( final ColumnLevel selectedColumn ) {
@@ -333,6 +331,7 @@ public class DatabaseViewer extends DatabaseController {
             addIfNotNull(actions, sqlTemplatesAndActions.getQuickViewOtherTableAction(selectedColumn, this));
         }
 
+        appendSpiActions(actions, getSpiColumnActions(selectedColumn));
         return actions;
     }
 
@@ -365,7 +364,18 @@ public class DatabaseViewer extends DatabaseController {
             addIfNotNull(actions, sqlTemplatesAndActions.getImportRaster2TilesTableAction(guiBridge, this));
             addIfNotNull(actions, sqlTemplatesAndActions.getImportVector2TilesTableAction(guiBridge, this));
         }
+        addSeparator(actions);
+        actions.add(new ImportCsvAsNewTableAction(currentConnectedSqlDatabase, guiBridge, pm, this, this::refreshDatabaseTreeQuietly));
+        appendSpiActions(actions, getSpiDatabaseActions(dbLevel));
         return actions;
+    }
+
+    private void refreshDatabaseTreeQuietly() {
+        try {
+            refreshDatabaseTree();
+        } catch (Exception ex) {
+            GuiUtilities.handleError(this, ex);
+        }
     }
 
     private void addSeparator( List<Action> actions ) {
@@ -403,196 +413,18 @@ public class DatabaseViewer extends DatabaseController {
         }
         boolean isSmash = selectedTable.tableName.equals("debug");
         if (selectedTable.tableName.equals(LogDb.TABLE_MESSAGES) || isSmash) {
-            actions.add(new AbstractAction("Show HTML report"){
-                @Override
-                public void actionPerformed( ActionEvent e ) {
-                    try {
-                        String sql = "select  " + LogDb.type_NAME + ", " + LogDb.TimeStamp_NAME + ", " + LogDb.tag_NAME + ","
-                                + LogDb.message_NAME + " from " + LogDb.TABLE_MESSAGES + " order by " + LogDb.TimeStamp_NAME
-                                + " desc";
-                        if (isSmash) {
-                            sql = "select level, ts, \"GPLOG\", msg from debug order by ts desc";
-                        }
-                        String _sql = sql;
-                        LinkedHashMap<String, List<Message>> day2MessageMap = new LinkedHashMap<>();
-                        currentConnectedSqlDatabase.execOnConnection(connection -> {
-                            try (IHMStatement stmt = connection.createStatement(); IHMResultSet rs = stmt.executeQuery(_sql)) {
-                                while( rs.next() ) {
-
-                                    int type;
-                                    if (isSmash) {
-                                        String typeStr = rs.getString(1);
-                                        if (typeStr.contains("info")) {
-                                            type = EMessageType.INFO.getCode();
-                                        } else if (typeStr.contains("debug")) {
-                                            type = EMessageType.DEBUG.getCode();
-                                        } else if (typeStr.contains("warning")) {
-                                            type = EMessageType.WARNING.getCode();
-                                        } else if (typeStr.contains("error")) {
-                                            type = EMessageType.ERROR.getCode();
-                                        } else if (typeStr.contains("access")) {
-                                            type = EMessageType.ACCESS.getCode();
-                                        } else {
-                                            type = EMessageType.INFO.getCode();
-                                        }
-                                    } else {
-                                        type = rs.getInt(1);
-                                    }
-                                    long ts = rs.getLong(2);
-                                    String tag = rs.getString(3);
-                                    if (tag == null)
-                                        tag = "";
-                                    String msg = rs.getString(4);
-                                    String tsString = new DateTime(ts).toString(HMConstants.dateTimeFormatterYYYYMMDDHHMMSS);
-                                    String[] split = tsString.split(":");
-                                    String dayHour = split[0];
-
-                                    Message logMsg = new Message();
-                                    logMsg.tag = tag;
-                                    logMsg.msg = msg;
-                                    logMsg.ts = ts;
-                                    logMsg.type = type;
-
-                                    List<Message> messages = day2MessageMap.get(dayHour);
-                                    if (messages == null) {
-                                        messages = new ArrayList<Message>();
-                                        day2MessageMap.put(dayHour, messages);
-                                    }
-                                    messages.add(logMsg);
-                                }
-                                return "";
-                            }
-                        });
-
-                        HtmlReport rep = new HtmlReport();
-                        StringBuilder sb = new StringBuilder();
-                        rep.openReport(sb, "Log Messages");
-                        rep.openTable(sb, 98);
-                        String white = "#FFFFFF";
-                        String warning = "#ffb380";
-                        String debug = "#afe9af";
-                        String error = "#ff5555";
-                        String header = "#e6e6e6";
-                        String oddRow = "#f2f2f2";
-                        String evenRow = "#d5f9fe";
-
-                        rep.openTableRow(sb);
-                        rep.openTableCell(sb, header, "11", null, null);
-                        sb.append("DAY + HOUR ");
-                        rep.closeTableCell(sb);
-
-                        rep.openTableCell(sb, header, "6", null, null);
-                        sb.append("MIN:SEC");
-                        rep.closeTableCell(sb);
-
-                        rep.openTableCell(sb, header, "13", null, null);
-                        sb.append("TAG");
-                        rep.closeTableCell(sb);
-
-                        rep.openTableCell(sb, header, "80", null, null);
-                        sb.append("MESSAGE");
-                        rep.closeTableCell(sb);
-
-                        rep.closeTableRow(sb);
-
-                        boolean odd = false;
-                        for( Entry<String, List<Message>> entry : day2MessageMap.entrySet() ) {
-                            String day = entry.getKey();
-                            List<Message> msgList = entry.getValue();
-
-                            rep.openTableRow(sb);
-
-                            String firstColor = evenRow;
-                            if (odd) {
-                                firstColor = oddRow;
-                            }
-                            odd = !odd;
-
-                            int rowSpan = msgList.size() + 1;
-                            rep.openTableCell(sb, firstColor, "11", null, rowSpan + "");
-                            sb.append(day);
-                            rep.closeTableCell(sb);
-
-                            rep.closeTableRow(sb);
-
-                            for( Message message : msgList ) {
-                                String color = white;
-                                if (message.type == EMessageType.DEBUG.getCode()) {
-                                    color = debug;
-                                } else if (message.type == EMessageType.WARNING.getCode()) {
-                                    color = warning;
-                                } else if (message.type == EMessageType.ERROR.getCode()) {
-                                    color = error;
-                                }
-                                String tsString = new DateTime(message.ts).toString(HMConstants.dateTimeFormatterYYYYMMDDHHMMSS);
-                                String[] split = tsString.split(":");
-                                String time = split[1] + ":" + split[2];
-
-                                rep.openTableRow(sb);
-
-                                rep.openTableCell(sb, color, "6", null, null);
-                                sb.append(time);
-                                rep.closeTableCell(sb);
-
-                                if (message.tag.length() == 0) {
-                                    rep.openTableCell(sb, color, "80", "2", null);
-                                    sb.append("<pre>").append(message.msg).append("</pre>");
-                                    rep.closeTableCell(sb);
-                                } else {
-                                    rep.openTableCell(sb, color, "13", null, null);
-                                    sb.append("<b>").append(message.tag).append("<b>");
-                                    rep.closeTableCell(sb);
-
-                                    rep.openTableCell(sb, color, "70", null, null);
-                                    sb.append("<pre>").append(message.msg).append("</pre>");
-                                    rep.closeTableCell(sb);
-                                }
-
-                                rep.closeTableRow(sb);
-                            }
-
-                        }
-
-                        rep.closeTable(sb);
-                        rep.closeReport(sb);
-
-                        File tmpFile = File.createTempFile("HM-", "_debug.html");
-                        FileUtilities.writeFile(sb.toString(), tmpFile);
-                        GuiUtilities.openFile(tmpFile);
-
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                }
-            });
+            actions.add(new LogMessagesHtmlReportAction(currentConnectedSqlDatabase, isSmash));
         }
 
-        if (GeoframeSchema.isSimulationDischargeTable(selectedTable.tableName.getName())) {
-            addSeparator(actions);
-            actions.add(new GeoframeChartAction(currentConnectedSqlDatabase, selectedTable.tableName.getName(), this));
+        addSeparator(actions);
+        if (TimeseriesTableUtils.isTimeseriesTable(selectedTable)) {
+            actions.add(new ImportCsvIntoTableAction("Import timeseries from CSV", currentConnectedSqlDatabase, selectedTable,
+                    guiBridge, pm, this, this::refreshDatabaseTreeQuietly));
         }
+        actions.add(new ImportCsvIntoTableAction("Import CSV into table", currentConnectedSqlDatabase, selectedTable, guiBridge,
+                pm, this, this::refreshDatabaseTreeQuietly));
 
-        if (GeoframeSchema.STATION_DATA_TABLE.equals(selectedTable.tableName.getName())) {
-            try {
-                if (currentConnectedSqlDatabase.hasTable(GeoframeSchema.STATION_TABLE)) {
-                    addSeparator(actions);
-                    actions.add(new GeoframeStationChartAction(currentConnectedSqlDatabase, this));
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
-
-        if (GeoframeSchema.BASIN_DATA_TABLE.equals(selectedTable.tableName.getName())) {
-            try {
-                if (currentConnectedSqlDatabase.hasTable(GeoframeSchema.BASIN_TABLE)) {
-                    addSeparator(actions);
-                    actions.add(new GeoframeBasinChartAction(currentConnectedSqlDatabase, this));
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
+        appendSpiActions(actions, getSpiTableActions(selectedTable));
 
         return actions;
     }
