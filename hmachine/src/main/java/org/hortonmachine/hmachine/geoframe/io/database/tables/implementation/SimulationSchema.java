@@ -22,14 +22,24 @@ public class SimulationSchema extends SimpleAbstractSchema {
 	}
 
 	public enum SimulationField implements TableField {
-		;
+		TS("ts", Long.class);
 
-		public String columnName() {
-			return null;
+		private final String columnName;
+		private final Class<?> javaType;
+
+		SimulationField(String columnName, Class<?> javaType) {
+			this.columnName = columnName;
+			this.javaType = javaType;
 		}
 
+		@Override
+		public String columnName() {
+			return columnName;
+		}
+
+		@Override
 		public Class<?> javaType() {
-			return null;
+			return javaType;
 		}
 
 	}
