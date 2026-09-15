@@ -56,7 +56,8 @@ public class ErmCalibration extends ErmBase {
 	@In
 	public CostFunctions pCostFunction = CostFunctions.KGE;
 	
-	public boolean printDebugInfo = true; 
+	public boolean printDebugInfo = true;
+
 
 	@Execute
 	public void process() throws Exception {
@@ -89,7 +90,7 @@ public class ErmCalibration extends ErmBase {
 
 	public static void main(String[] args) throws Exception {
 		ErmCalibration cal = new ErmCalibration();
-		cal.inGeopackagePath = "/home/hydrologis/development/hm_models_testdata/geoframe/newage/noce/workspace/outputs/geoframe_data.gpkg";
+		cal.inGeopackagePath = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/basin_km9.gpkg";
 		cal.inFromTimestamp = ErmCommonData.START_TIMESTAMP + ":00";
 		cal.inToTimestamp = ErmCommonData.END_TIMESTAMP + ":00";
 		cal.pTimeStepMinutes = 60;
@@ -97,6 +98,7 @@ public class ErmCalibration extends ErmBase {
 		cal.pPsoIterations = 300;
 		cal.pParticlesNum = 20;
 		cal.doWriteState = false;
+		cal.outBasinId = 2877;
 		cal.process();
 	}
 }

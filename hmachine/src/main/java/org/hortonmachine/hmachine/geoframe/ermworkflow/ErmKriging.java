@@ -60,12 +60,12 @@ public class ErmKriging extends HMModel {
 			pm.message("Processing temperature data...");
 			int type = 4;
 			int typeId = VarSchema.EnvironmentalVariableType.TEMPERATURE.getId();
-			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
-				db.executeInsertUpdateDeleteSql(
-						"DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
-								BasinDataField.VAR_ID.columnName() + " = " + typeId);
-			}
-			processKriging(db, maxId, type, typeId, false);
+//			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
+//				db.executeInsertUpdateDeleteSql(
+//						"DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
+//								BasinDataField.VAR_ID.columnName() + " = " + typeId);
+//			}
+			//processKriging(db, maxId, type, typeId, false);
 
 			pm.message("Processing precipitation data...");
 			type = 2; // TODO is this the same as below?
@@ -103,10 +103,10 @@ public class ErmKriging extends HMModel {
 
 	public static void main(String[] args) throws Exception {
 		ErmKriging ek = new ErmKriging();
-		ek.inGpkg = "/home/hydrologis/development/hm_models_testdata/geoframe/newage/noce/workspace/outputs/geoframe_data.gpkg";
-		ek.pStartTimestamp = ErmCommonData.START_TIMESTAMP;
-		ek.pEndTimestamp = ErmCommonData.END_TIMESTAMP;
-		ek.doDeleteExistingData = true;
+		ek.inGpkg = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/basin_km9.gpkg";
+		ek.pStartTimestamp = "2008-09-01 01:00";
+		ek.pEndTimestamp ="2024-06-01 01:00";;
+		ek.doDeleteExistingData = false;
 		ek.process();
 	}
 
