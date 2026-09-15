@@ -40,6 +40,9 @@ public interface IWaterBudgetSimulationRunner {
 	/**
 	 * Configure the runner with the necessary parameters.
 	 * 
+	 * I added this only in case to write always in the same table (working in real
+	 * time)
+	 * 
 	 * @param timeStepMinutes        the minutes corresponding to the time step
 	 *                               used.
 	 * @param maxBasinId             the maximum basin id (to size output and state
@@ -64,17 +67,18 @@ public interface IWaterBudgetSimulationRunner {
 	}
 
 	/**
-	 * Same as {@link #configure(int, int, TopologyNode, double[], boolean, boolean, boolean, ADb, IHMProgressMonitor)},
+	 * Similar to
+	 * {@link #configure(int, int, TopologyNode, double[], boolean, boolean, boolean, ADb, IHMProgressMonitor)},
 	 * additionally pinning the discharge/state output table names instead of
-	 * letting them default to a new per-run timestamped table - needed to
-	 * append to the same table across runs (e.g. a daily realtime job resuming
-	 * from the last simulated step).
+	 * letting them default to a new per-run timestamped table - needed to append to
+	 * the same table across runs (e.g. a daily realtime job resuming from the last
+	 * simulated step).
 	 *
-	 * @param dischargeTableName fixed discharge table name, or {@code null} for
-	 *                           the default per-run timestamped table
+	 * @param dischargeTableName fixed discharge table name, or {@code null} for the
+	 *                           default per-run timestamped table
 	 * @param stateTableName     fixed state table name, or {@code null} for the
-	 *                           default per-run timestamped table (only used
-	 *                           when {@code writeState} is {@code true})
+	 *                           default per-run timestamped table (only used when
+	 *                           {@code writeState} is {@code true})
 	 */
 	void configure(int timeStepMinutes, int maxBasinId, TopologyNode rootNode, double[] basinAreas, boolean doParallel,
 			boolean doTopologicallyOrdered, boolean writeState, ADb outputDb, IHMProgressMonitor pm,
@@ -84,7 +88,10 @@ public interface IWaterBudgetSimulationRunner {
 	 * Executes a water budget simulation for the given time interval and model
 	 * parameters, starting from the default zero/NaN initial conditions (see
 	 * {@link WaterBudgetInitialConditions#zero}).
+	 * 
+	 * I added this only in case to not use initial condition
 	 *
+	 * 
 	 * @param wbParams      all paramters required by the water budget model.
 	 * @param lai           Leaf Area Index used by the canopy model.
 	 * @param precipReader  Iterator providing precipitation input data.
@@ -104,8 +111,8 @@ public interface IWaterBudgetSimulationRunner {
 
 	/**
 	 * Executes a water budget simulation for the given time interval and model
-	 * parameters, optionally resuming from a previously persisted state instead
-	 * of the default zero/NaN initial conditions.
+	 * parameters, optionally resuming from a previously persisted state instead of
+	 * the default zero/NaN initial conditions.
 	 *
 	 * @param wbParams          all paramters required by the water budget model.
 	 * @param lai               Leaf Area Index used by the canopy model.
@@ -126,34 +133,34 @@ public interface IWaterBudgetSimulationRunner {
 			WaterBudgetInitialConditions initialConditions) throws Exception;
 
 	/**
-	 * Get the observed discharge values for the given node and time interval 
-	 * to be used for the calibration. The passed node has to have a station assigned to it, 
-	 * otherwise an exception is thrown.
+	 * Get the observed discharge values for the given node and time interval to be
+	 * used for the calibration. The passed node has to have a station assigned to
+	 * it, otherwise an exception is thrown.
 	 * 
 	 * @param envDb
-	 * @param observationsNode the node for which the observed discharge values are requested. It must have a station assigned to it.
+	 * @param observationsNode the node for which the observed discharge values are
+	 *                         requested. It must have a station assigned to it.
 	 * @param fromTS
 	 * @param toTS
-	 * @return an array of observed discharge values for the given node and time interval.
+	 * @return an array of observed discharge values for the given node and time
+	 *         interval.
 	 * @throws Exception
 	 */
-	static double[] getObservedDischarge(ADb envDb, TopologyNode observationsNode, String fromTS, String toTS) throws Exception {
+	static double[] getObservedDischarge(ADb envDb, TopologyNode observationsNode, String fromTS, String toTS)
+			throws Exception {
 		int id = EnvironmentalVariableType.DISCHARGE.getId();
 		long from = GeoframeEnvDatabaseIterator.str2ts(fromTS);
 		long to = GeoframeEnvDatabaseIterator.str2ts(toTS);
 		int basinId = observationsNode.basinId;
-		
+
 		String ts = StationDataSchema.StationDataField.TS.columnName();
-		String sql = "select " + ts + ", " + StationDataSchema.StationDataField.VALUE.columnName() 
-				+ " from " + GeoFrameSimpleTable.STATIONDATA.tableName()
-				+ " sd join " + GeoFrameGeoTable.HYDRO_METEO_STATION.tableName()
-				+ " st on sd." + StationDataSchema.StationDataField.STATION_ID.columnName() 
-				+ "=st." +  StationSchema.Station.ID.columnName()
-				+ " where "
-				+ StationDataField.VAR_ID.columnName() + " = " + id 
-				+ " and st." + StationSchema.Station.BASIN_ID.columnName() + " = " + basinId
-				+ " and sd." + ts + " >= " + from + " and sd." + ts + " <= " + to
-				+ " order by " + ts + " asc";
+		String sql = "select " + ts + ", " + StationDataSchema.StationDataField.VALUE.columnName() + " from "
+				+ GeoFrameSimpleTable.STATIONDATA.tableName() + " sd join "
+				+ GeoFrameGeoTable.HYDRO_METEO_STATION.tableName() + " st on sd."
+				+ StationDataSchema.StationDataField.STATION_ID.columnName() + "=st."
+				+ StationSchema.Station.ID.columnName() + " where " + StationDataField.VAR_ID.columnName() + " = " + id
+				+ " and st." + StationSchema.Station.BASIN_ID.columnName() + " = " + basinId + " and sd." + ts + " >= "
+				+ from + " and sd." + ts + " <= " + to + " order by " + ts + " asc";
 		QueryResult qr = envDb.getTableRecordsMapFromRawSql(sql, -1);
 		DynamicDoubleArray dda = new DynamicDoubleArray(10000, 10000);
 		int valueIndex = qr.names.indexOf("value");
