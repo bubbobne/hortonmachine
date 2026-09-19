@@ -42,6 +42,7 @@ import org.hortonmachine.hmachine.modules.statistics.kriging.linearsystemsolver.
 import org.hortonmachine.hmachine.modules.statistics.kriging.primarylocation.StationProcessor;
 import org.hortonmachine.hmachine.modules.statistics.kriging.primarylocation.StationsSelection;
 import org.hortonmachine.hmachine.modules.statistics.kriging.utilities.Utility;
+import org.hortonmachine.hmachine.modules.statistics.kriging.validation.IKrigingOutputValidator;
 import org.hortonmachine.hmachine.modules.statistics.kriging.variogram.theoretical.TheoreticalVariogram;
 import org.hortonmachine.hmachine.modules.statistics.kriging.variogram.theoretical.VariogramParameters;
 import org.locationtech.jts.geom.Coordinate;
@@ -91,7 +92,7 @@ import oms3.annotations.UI;
 //@Status()
 //@License("General Public License Version 3 (GPLv3)")
 //@SuppressWarnings("nls")
-public abstract class Kriging  {
+public abstract class Kriging {
 
 	@Description("The .shp of the measurement point, containing the position of the stations.")
 	@In
@@ -160,7 +161,6 @@ public abstract class Kriging  {
 	@In
 	public boolean doLogarithmic = false;
 
-	
 	/** transform to log. */
 	@In
 	public boolean boundedToZero = false;
@@ -194,6 +194,8 @@ public abstract class Kriging  {
 	@In
 	public boolean parallelComputation = false;
 
+	public IKrigingOutputValidator valueChecker = null;
+
 	private VariogramParameters variogramParameters;
 
 	protected InterpolationDataProvider provider = null;
@@ -207,11 +209,6 @@ public abstract class Kriging  {
 		}
 
 	}
-	
-	
-		
-
-	
 
 	/**
 	 * Executes Kriging algorithm.
@@ -288,7 +285,8 @@ public abstract class Kriging  {
 
 					} else {
 
-						// TODO make this a more informative message or throw an exception if appropriate.
+						// TODO make this a more informative message or throw an exception if
+						// appropriate.
 //						pm.errorMessage("No value for this time step");
 
 						interpolatedValue = inData.values().iterator().next()[0];
@@ -367,7 +365,8 @@ public abstract class Kriging  {
 							interpolatedValue = inData.values().iterator().next()[0];
 						}
 					} else {
-						// TODO make this a more informative message or throw an exception if appropriate.
+						// TODO make this a more informative message or throw an exception if
+						// appropriate.
 //						pm.errorMessage("No value for this time step");
 						// inData stores a single double[] value; use its first entry.
 						interpolatedValue = inData.values().iterator().next()[0];
