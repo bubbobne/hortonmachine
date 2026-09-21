@@ -17,9 +17,6 @@ import static org.hortonmachine.hmachine.i18n.HortonMessages.OMSPRESTEYTAYLORETP
 import static org.hortonmachine.hmachine.i18n.HortonMessages.OMSPRESTEYTAYLORETPMODEL_pGnight_DESCRIPTION;
 
 import java.sql.SQLException;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -28,7 +25,6 @@ import org.hortonmachine.dbs.compat.ASpatialDb;
 import org.hortonmachine.dbs.compat.IHMPreparedStatement;
 import org.hortonmachine.gears.libs.modules.HMConstants;
 import org.hortonmachine.gears.libs.modules.HMModel;
-import org.hortonmachine.gears.utils.time.UtcTimeUtilities;
 import org.hortonmachine.hmachine.geoframe.core.TopologyNode;
 import org.hortonmachine.hmachine.geoframe.io.GeoframeEnvDatabaseIterator;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.GeoFrameGeoTable;

@@ -124,11 +124,10 @@ public class ErmPrestleyEt extends HMModel {
 	}
 
 	public static void main(String[] args) throws Exception {
-		String workspacePath = "/home/hydrologis/development/hm_models_testdata/geoframe/newage/noce/workspace/";
 		ErmPrestleyEt ept = new ErmPrestleyEt();
-		ept.inGpkg = workspacePath + "outputs/geoframe_data.gpkg";
-		ept.pStartTimestamp = ErmCommonData.START_TIMESTAMP;
-		ept.pEndTimestamp = ErmCommonData.END_TIMESTAMP;
+		ept.inGpkg =  "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/basin_km9.gpkg";
+		ept.pStartTimestamp = "2000-01-01 01:00";
+		ept.pEndTimestamp = "2024-08-01 01:00";
 		ept.doOverwrite = true;
 		ept.process();
 	}

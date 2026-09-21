@@ -241,9 +241,7 @@ public class GeoframeRawDataImporter extends HMModel {
 
 				for (int i = 0; i < l; i++) {
 					ids[i] = ((Number) rows.get(i)[idIndex]).intValue();
-					//TODO fix otherwise arise n error 
 					dbId2fileIdsMap.put(ids[i] , ids[i] );
-
 				}
 			}
 			if (inMeasurementDataFilePath != null) {

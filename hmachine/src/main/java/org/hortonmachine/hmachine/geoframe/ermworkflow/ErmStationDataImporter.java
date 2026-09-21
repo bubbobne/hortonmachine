@@ -124,19 +124,37 @@ public class ErmStationDataImporter extends HMModel {
 	}
 
 	public static void main(String[] args) throws Exception {
-		String workspace = "/home/hydrologis/development/hm_models_testdata/geoframe/newage/noce/workspace/";
+		String workspace = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/";
 		ErmStationDataImporter ei = new ErmStationDataImporter();
-		ei.inGpkg = workspace + "outputs/geoframe_data.gpkg";
-		ei.pStartTimestamp = ErmCommonData.START_TIMESTAMP;
-		ei.pEndTimestamp = ErmCommonData.END_TIMESTAMP;
-		ei.pTimeResolution = ErmCommonData.TIME_RESOLUTION;
-		ei.inMeteoStations = workspace + "stations_tot.shp";
-		ei.inTemperaturesCsv = workspace + "temperature_gf_2.csv";
-		ei.inPrecipitationCsv = workspace + "precipitation_gf.csv";
-		ei.inStreamGauges = workspace + "idrometri.shp";
-		ei.pStreamGaugesIdField = "idstazione";
-		ei.inStreamGaugesCsv = workspace + "Q_vermiglio_2000-2024.csv";
-		ei.process();
-	}
+		ei.inGpkg = workspace + "/basin_km9.gpkg";
+//		ei.pStartTimestamp = "1990-01-01 01:00";
+//		ei.pEndTimestamp = "2024-07-17 23:00";
+//		ei.pTimeResolution = ErmCommonData.TIME_RESOLUTION;
+//		ei.inMeteoStations = workspace + "stations_tot.shp";
+//		ei.inTemperaturesCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/"
+//				+ "temperature_kriging_ready.csv";
+//		ei.inPrecipitationCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/"
+//				+ "precipitation_kriging_ready.csv";
+//
+//		ei.process();
 
+		
+		ei.pStartTimestamp = "2000-01-01 01:00";
+		ei.pEndTimestamp = "2024-12-31 23:00";
+		ei.pTimeResolution = ErmCommonData.TIME_RESOLUTION;
+		ei.inMeteoStations = null;
+		ei.inTemperaturesCsv = null;
+		ei.inPrecipitationCsv = null;
+//		ei.inStreamGauges = "/home/andreisd/Documents/project/data_hm/vermiglio_dtm/inputs/idrometri.shp";
+//		ei.pStreamGaugesIdField = "idstazione";
+//		ei.inStreamGaugesCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/simulazioni/nearest_station_NOCE_10km/data/Q_vermiglio.csv";
+
+//		ei.process();
+
+		ei.inStreamGauges = null;
+		ei.pStreamGaugesIdField = "idstazione";
+		ei.inStreamGaugesCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/simulazioni/nearest_station_NOCE_10km/data/Q_male.csv";
+		ei.process();
+
+	}
 }

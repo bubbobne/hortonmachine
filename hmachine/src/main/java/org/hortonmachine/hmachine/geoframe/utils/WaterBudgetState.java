@@ -69,8 +69,6 @@ public class WaterBudgetState {
 	 * from the last simulated step).</p>
 	 */
 	public static String initTable(ADb db) throws Exception {
-		// create table if not exists, with primary key on basin id and timestamp,
-		// and an index on basin_id and one on timestamp for faster queries
 		String tsStr = ETimeUtilities.INSTANCE.TIMESTAMPFORMATTER_UTC.format(new Date());
 		String tableName = "sim" + tsStr + "_water_budget_state";
 		return initTable(db, tableName);

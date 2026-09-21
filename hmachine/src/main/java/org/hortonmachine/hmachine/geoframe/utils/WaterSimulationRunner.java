@@ -1,7 +1,5 @@
 package org.hortonmachine.hmachine.geoframe.utils;
 
-import java.util.Arrays;
-
 import org.hortonmachine.dbs.compat.ADb;
 import org.hortonmachine.gears.libs.monitor.DummyProgressMonitor;
 import org.hortonmachine.gears.libs.monitor.IHMProgressMonitor;
@@ -47,7 +45,7 @@ public class WaterSimulationRunner implements IWaterBudgetSimulationRunner {
 			GeoframeEnvDatabaseIterator tempReader, GeoframeEnvDatabaseIterator etpReader, String iterationInfo,
 			WaterBudgetInitialConditions initialConditions) throws Exception {
 		TopologyNode localRootNode = rootNode.clone();
-		
+
 		if (pm == null) {
 			pm = new DummyProgressMonitor();
 		}

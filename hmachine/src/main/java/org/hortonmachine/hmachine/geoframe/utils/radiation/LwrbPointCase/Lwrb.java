@@ -325,7 +325,6 @@ public class Lwrb extends HMModel {
 	 * @throws SchemaException
 	 */
 	private void storeResult(int ID, double downwellingALLSKY, double upwelling) throws SchemaException {
-
 		outHMlongwaveDownwellingHM.put(ID, new double[] { downwellingALLSKY });
 		outHMlongwaveUpwellingHM.put(ID, new double[] { upwelling });
 	}

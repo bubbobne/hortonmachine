@@ -117,8 +117,8 @@ public class ErmRadiation extends HMModel {
 						+ VarSchema.EnvironmentalVariableType.RADIATION.getId());
 			}
 			
-			var dtm = getRaster(p.basinPit);
-			var skyview = getRaster(p.basinSkyview);
+			var dtm = getRaster("/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/Trentino/Noce/basin_pit.tif");
+			var skyview = getRaster("/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/Trentino/Noce/Noce_skyview.tif");
 			if (downscaleFactor > 1) {
 				dtm = downscaleRaster(dtm, downscaleFactor);
 				skyview = downscaleRaster(skyview, downscaleFactor);
@@ -164,12 +164,12 @@ public class ErmRadiation extends HMModel {
 	public static void main(String[] args) throws Exception {
 		String workspacePath = "/home/hydrologis/development/hm_models_testdata/geoframe/newage/noce/workspace/";
 		ErmRadiation er = new ErmRadiation();
-		er.inDtm = workspacePath + "dtm.tif";
-		er.inGpkg = workspacePath + "outputs/geoframe_data.gpkg";
-		er.pStartTimestamp = ErmCommonData.START_TIMESTAMP;
-		er.pEndTimestamp = ErmCommonData.END_TIMESTAMP;
+		er.inDtm ="/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/Trentino/Noce/dtm_50m.tif";
+		er.inGpkg = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/basin_km9.gpkg";
+		er.pStartTimestamp = "2000-01-01 01:00";
+		er.pEndTimestamp = "2024-08-31 23:00";
 		er.doOverwrite = true;
-		er.downscaleFactor = 8;
+		er.downscaleFactor = 100;
 		er.process();
 	}
 

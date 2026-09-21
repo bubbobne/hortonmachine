@@ -102,9 +102,7 @@ public class TableUtils {
 				sql = sql + " " + where;
 			}
 			result = inGeoframeDb.getTableRecordsMapFromRawSql(sql, -1);
-
 			int idIndex = result.names.indexOf(columnName);
-
 			var rows = result.data;
 			int l = result.data.size();
 			int[] ids = new int[l];
@@ -170,7 +168,9 @@ public class TableUtils {
 	}
 
 	/**
-	 * Checks whether the input  basin data are time-aligned.
+	 * 
+	 * Checks whether the simulated basin data are time-aligned.
+	 * realtime-simulation
 	 * <p>
 	 * The latest available timestamp is checked for all the requested basin IDs and
 	 * for each required simulated variable: precipitation, temperature, and
@@ -182,7 +182,9 @@ public class TableUtils {
 	 * @return {@code true} if all requested basins are time-aligned for all
 	 *         required variables, {@code false} otherwise
 	 */
-	public final static boolean areDBStationInputDataTimeAligned(ASpatialDb db, int[] ids) {
+
+
+	public final static boolean areDBSimulatedDataTimeAligned(ASpatialDb db, int[] ids) {
 
 		boolean precipitationStatus = areTableValueTimeAligned(db, ids, GeoFrameSimpleTable.BASINDATA.name(),
 				BasinDataField.BASIN_ID.columnName(), BasinDataField.TS.columnName(),
@@ -205,11 +207,11 @@ public class TableUtils {
 	 * simulating from.
 	 * <p>
 	 * State rows for every basin are always written together in a single batch per
-	 * timestep (see {@code WaterBudgetSimulation.processTimestep}), so the
-	 * table-wide {@code MAX(timestamp)} is always aligned across basins - no
-	 * per-basin grouping is needed.
+	 * timestep (see {@code WaterBudgetSimulation.processTimestep}), so the 
+	 * realtime-simulation table-wide {@code MAX(timestamp)} is always aligned
+	 * across basins - no per-basin grouping is needed.
 	 *
-	 * @param db             the database containing the state table
+	 * @param db             the database containing the state table <<<<<<< HEAD
 	 * @param stateTableName the state table to check (see
 	 *                       {@code WaterBudgetState#initTable})
 	 * @return the last simulated timestamp, or {@code -1} if the table does not
@@ -267,6 +269,8 @@ public class TableUtils {
 		}
 		return true;
 	}
+
+
 
 	/**
 	 * Returns the number of IDs whose latest available timestamp is aligned with
