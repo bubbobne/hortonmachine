@@ -43,6 +43,7 @@ import org.hortonmachine.hmachine.modules.statistics.kriging.primarylocation.Sta
 import org.hortonmachine.hmachine.modules.statistics.kriging.primarylocation.StationsSelection;
 import org.hortonmachine.hmachine.modules.statistics.kriging.utilities.Utility;
 import org.hortonmachine.hmachine.modules.statistics.kriging.validation.IKrigingOutputValidator;
+import org.hortonmachine.hmachine.modules.statistics.kriging.validation.NearestStationSupplierValue;
 import org.hortonmachine.hmachine.modules.statistics.kriging.variogram.theoretical.TheoreticalVariogram;
 import org.hortonmachine.hmachine.modules.statistics.kriging.variogram.theoretical.VariogramParameters;
 import org.locationtech.jts.geom.Coordinate;
@@ -270,6 +271,10 @@ public abstract class Kriging {
 						if (!areAllEquals && n1 > 1) {
 
 							interpolatedValue = interpolateValue(sp, coordinate);
+							if (valueChecker == null) {
+								valueChecker.setDoubleSupplier(new NearestStationSupplierValue(stations));
+								interpolatedValue = valueChecker.getValidValue(interpolatedValue);
+							}
 							// pm.worked(1);
 						} else if (n1 == 1 || areAllEquals) {
 							interpolatedValue = sp.getHResiduals()[0];
@@ -360,6 +365,10 @@ public abstract class Kriging {
 							}
 						} else if (n1 == 1 || areAllEquals) {
 							interpolatedValue = sp.getHResiduals()[0];
+							if (valueChecker == null) {
+								valueChecker.setDoubleSupplier(new NearestStationSupplierValue(stations));
+								interpolatedValue = valueChecker.getValidValue(interpolatedValue);
+							}
 						} else {
 							// Fallback: inData stores a single double[] value; use its first entry.
 							interpolatedValue = inData.values().iterator().next()[0];

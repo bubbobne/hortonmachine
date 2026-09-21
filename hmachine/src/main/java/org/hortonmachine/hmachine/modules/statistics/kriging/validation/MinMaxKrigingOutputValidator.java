@@ -27,6 +27,18 @@ public class MinMaxKrigingOutputValidator extends AbstractKrigingOutputValidator
 	 * @param maxValue          the upper bound threshold (inclusive)
 	 * @param stationsSelection the station to get values.
 	 */
+	public MinMaxKrigingOutputValidator(double minValue, double maxValus) {
+		this.minValue = minValue;
+		this.maxValue = maxValus;
+	}
+
+	/**
+	 * Constructs a validator with custom minimum and maximum allowed values.
+	 *
+	 * @param minValue          the lower bound threshold (inclusive)
+	 * @param maxValue          the upper bound threshold (inclusive)
+	 * @param stationsSelection the station to get values.
+	 */
 	public MinMaxKrigingOutputValidator(double minValue, double maxValus, DoubleSupplierForValidator doubleSupplier) {
 		this.minValue = minValue;
 		this.maxValue = maxValus;
@@ -62,6 +74,15 @@ public class MinMaxKrigingOutputValidator extends AbstractKrigingOutputValidator
 	 */
 	// to extend
 	protected double computeFallback(double krigingOutput) {
-		return supplier.getValue();
+		if (supplier != null) {
+			return supplier.getValue();
+		} else {
+			return HMConstants.doubleNovalue;
+		}
+	}
+
+	@Override
+	public void setDoubleSupplier(DoubleSupplierForValidator supplier) {
+		this.supplier = supplier;
 	}
 }

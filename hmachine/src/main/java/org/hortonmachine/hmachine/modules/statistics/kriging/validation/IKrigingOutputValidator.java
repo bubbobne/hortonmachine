@@ -49,4 +49,7 @@ public interface IKrigingOutputValidator {
 	 * @return the original valid value or the default replacement value
 	 */
 	double getValidValue(double krigingOutput);
+	
+	
+	void setDoubleSupplier(DoubleSupplierForValidator supplier);
 }
