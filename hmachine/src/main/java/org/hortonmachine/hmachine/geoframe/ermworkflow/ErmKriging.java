@@ -10,7 +10,7 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.GeoFrameSimpleTabl
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.BasinDataSchema.BasinDataField;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema.Station;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema;
 import org.hortonmachine.hmachine.geoframe.utils.KrigingAtCentroid;
 
 import oms3.annotations.Author;
@@ -59,7 +59,7 @@ public class ErmKriging extends HMModel {
 
 			pm.message("Processing temperature data...");
 			int type = 4;
-			int typeId = VarSchema.EnvironmentalVariableType.TEMPERATURE.getId();
+			int typeId = VariableSchema.EnvironmentalVariableType.TEMPERATURE.getId();
 //			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
 //				db.executeInsertUpdateDeleteSql(
 //						"DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
@@ -69,7 +69,7 @@ public class ErmKriging extends HMModel {
 
 			pm.message("Processing precipitation data...");
 			type = 2; // TODO is this the same as below?
-			typeId = VarSchema.EnvironmentalVariableType.PRECIPITATION.getId();
+			typeId = VariableSchema.EnvironmentalVariableType.PRECIPITATION.getId();
 			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
 				db.executeInsertUpdateDeleteSql(
 						"DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //

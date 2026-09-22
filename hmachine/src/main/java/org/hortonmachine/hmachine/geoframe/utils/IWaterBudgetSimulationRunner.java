@@ -27,7 +27,7 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.Bas
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationDataSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationDataSchema.StationDataField;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.EnvironmentalVariableType;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.EnvironmentalVariableType;
 import org.jfree.chart.ChartPanel;
 import org.locationtech.jts.geom.Geometry;
 

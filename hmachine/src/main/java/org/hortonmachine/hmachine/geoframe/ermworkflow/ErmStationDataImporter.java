@@ -7,8 +7,8 @@ import org.hortonmachine.gears.libs.modules.HMConstants;
 import org.hortonmachine.gears.libs.modules.HMModel;
 import org.hortonmachine.hmachine.geoframe.io.database.importer.GeoframeRawDataImporter;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema.StationType;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.EnvironmentalVariableType;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.TimeResolution;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.EnvironmentalVariableType;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.TimeResolution;
 
 import oms3.annotations.Author;
 import oms3.annotations.Description;

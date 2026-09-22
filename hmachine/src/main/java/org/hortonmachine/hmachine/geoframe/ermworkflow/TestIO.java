@@ -3,8 +3,8 @@ package org.hortonmachine.hmachine.geoframe.ermworkflow;
 import org.hortonmachine.gears.libs.modules.HMModel;
 import org.hortonmachine.hmachine.geoframe.io.database.importer.GeoframeRawDataImporter;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema.StationType;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.EnvironmentalVariableType;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.TimeResolution;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.EnvironmentalVariableType;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.TimeResolution;
 
 public class TestIO extends HMModel {
 	// NOCE

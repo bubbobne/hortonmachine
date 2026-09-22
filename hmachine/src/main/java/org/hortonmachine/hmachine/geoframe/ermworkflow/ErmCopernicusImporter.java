@@ -22,7 +22,7 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.GeoFrameGeoTable;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.GeoFrameSimpleTable;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.BasinDataSchema.BasinDataField;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.BasinPolygonSchema.BasinMultiPolygonField;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema;
 
 import oms3.annotations.Author;
 import oms3.annotations.Description;
@@ -97,7 +97,7 @@ public class ErmCopernicusImporter extends HMModel {
 			var basinFC4326 = new ReprojectingFeatureCollection(basinFC, DefaultGeographicCRS.WGS84);
 
 			pm.message("Processing temperature data...");
-			int typeId = VarSchema.EnvironmentalVariableType.TEMPERATURE.getId();
+			int typeId = VariableSchema.EnvironmentalVariableType.TEMPERATURE.getId();
 			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
 				db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
 						BasinDataField.VAR_ID.columnName() + " = " + typeId);

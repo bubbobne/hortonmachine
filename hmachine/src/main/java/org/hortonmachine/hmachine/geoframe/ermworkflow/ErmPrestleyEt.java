@@ -6,10 +6,10 @@ import org.hortonmachine.gears.libs.modules.HMConstants;
 import org.hortonmachine.gears.libs.modules.HMModel;
 import org.hortonmachine.hmachine.geoframe.io.GeoframeEnvDatabaseIterator;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.GeoFrameSimpleTable;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.BasinDataSchema.BasinDataField;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.EnvironmentalVariableType;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.TimeResolution;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.EnvironmentalVariableType;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.TimeResolution;
 import org.hortonmachine.hmachine.geoframe.utils.IWaterBudgetSimulationRunner;
 import org.hortonmachine.hmachine.geoframe.utils.PrestleyETAtCentroid;
 
@@ -88,7 +88,7 @@ public class ErmPrestleyEt extends HMModel {
 			if (doOverwrite) {
 				db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
 						BasinDataField.VAR_ID.columnName() + " = "
-						+ VarSchema.EnvironmentalVariableType.EVAPOTRANSPIRATION.getId());
+						+ VariableSchema.EnvironmentalVariableType.EVAPOTRANSPIRATION.getId());
 			}
 
 			var temperatureReader = new GeoframeEnvDatabaseIterator();

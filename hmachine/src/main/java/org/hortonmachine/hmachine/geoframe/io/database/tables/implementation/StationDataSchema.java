@@ -5,7 +5,7 @@ import java.util.List;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.GeoFrameSimpleTable;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.definition.SimpleAbstractSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.definition.TableField;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.VarField;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.VarField;
 
 /**
  * Schema for raw environmental data observations.

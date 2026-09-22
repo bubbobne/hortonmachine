@@ -6,7 +6,7 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.Bas
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationDataSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.SimulationSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.TopologySchema;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema;
 
 /**
  * List of tables required for GeoFrame rainfall-runoff simulations.
@@ -43,7 +43,7 @@ public enum GeoFrameSimpleTable {
 	 * list of all variable
 	 * 
 	 */
-	VARIABLE(new VarSchema());
+	VARIABLE(new VariableSchema());
 
 	private SimpleAbstractSchema tableFields;
 

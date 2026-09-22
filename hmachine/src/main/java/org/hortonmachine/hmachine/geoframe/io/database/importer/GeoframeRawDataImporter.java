@@ -37,8 +37,8 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.Bas
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema.Station;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema.StationType;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.EnvironmentalVariable;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.TimeResolution;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.EnvironmentalVariable;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.TimeResolution;
 import org.locationtech.jts.geom.Geometry;
 
 import oms3.annotations.Author;

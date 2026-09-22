@@ -40,8 +40,8 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.definition.TableFi
  *
  * @author Daniele Andreis
  */
-public class VarSchema extends SimpleAbstractSchema {
-	public VarSchema() {
+public class VariableSchema extends SimpleAbstractSchema {
+	public VariableSchema() {
 		super("environmental_variables", VarField.class);
 	}
 

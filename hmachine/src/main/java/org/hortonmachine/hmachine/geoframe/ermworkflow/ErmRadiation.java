@@ -9,10 +9,10 @@ import org.hortonmachine.gears.libs.modules.HMRaster;
 import org.hortonmachine.gears.modules.r.transformer.OmsRasterResolutionResampler;
 import org.hortonmachine.hmachine.geoframe.io.GeoframeEnvDatabaseIterator;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.GeoFrameSimpleTable;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.BasinDataSchema.BasinDataField;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.EnvironmentalVariableType;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.TimeResolution;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.EnvironmentalVariableType;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.TimeResolution;
 import org.hortonmachine.hmachine.geoframe.utils.IWaterBudgetSimulationRunner;
 import org.hortonmachine.hmachine.geoframe.utils.RadiationAtCentroid;
 
@@ -114,7 +114,7 @@ public class ErmRadiation extends HMModel {
 			if (doOverwrite) {
 				db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
 						BasinDataField.VAR_ID.columnName() + " = "
-						+ VarSchema.EnvironmentalVariableType.RADIATION.getId());
+						+ VariableSchema.EnvironmentalVariableType.RADIATION.getId());
 			}
 			
 			var dtm = getRaster("/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/Trentino/Noce/basin_pit.tif");

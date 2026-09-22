@@ -13,10 +13,10 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.definition.TableFi
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.BasinDataSchema.BasinDataField;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.SimulationSchema.SimulationField;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationDataSchema;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.EnvironmentalVariable;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.EnvironmentalVariableType;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.TimeResolution;
-import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VarSchema.VarField;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.EnvironmentalVariable;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.EnvironmentalVariableType;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.TimeResolution;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema.VarField;
 
 /**
  * Utility class for creating and validating database tables and populating
@@ -182,8 +182,6 @@ public class TableUtils {
 	 * @return {@code true} if all requested basins are time-aligned for all
 	 *         required variables, {@code false} otherwise
 	 */
-
-
 	public final static boolean areDBSimulatedDataTimeAligned(ASpatialDb db, int[] ids) {
 
 		boolean precipitationStatus = areTableValueTimeAligned(db, ids, GeoFrameSimpleTable.BASINDATA.name(),
