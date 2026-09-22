@@ -7,6 +7,7 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.Sta
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.SimulationSchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.TopologySchema;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema;
+import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariogramSchema;
 
 /**
  * List of tables required for GeoFrame rainfall-runoff simulations.
@@ -43,7 +44,13 @@ public enum GeoFrameSimpleTable {
 	 * list of all variable
 	 * 
 	 */
-	VARIABLE(new VariableSchema());
+	VARIABLE(new VariableSchema()),
+
+	/**
+	 * Variograms if running kriging.
+	 * 
+	 */
+	VARIOGRAM(new VariogramSchema());
 
 	private SimpleAbstractSchema tableFields;
 

@@ -37,6 +37,7 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.Sta
 import org.hortonmachine.hmachine.modules.statistics.kriging.pointcase.KrigingPointCase;
 import org.hortonmachine.hmachine.modules.statistics.kriging.primarylocation.StationsSelection;
 import org.hortonmachine.hmachine.modules.statistics.kriging.variogram.theoretical.SingleStepVariogramEvaluator;
+import org.hortonmachine.hmachine.modules.statistics.kriging.variogram.theoretical.VariogramParameters;
 
 import oms3.annotations.Author;
 import oms3.annotations.Description;
@@ -121,6 +122,11 @@ public class KrigingAtCentroid extends HMModel {
 				String sql = GeoFrameSimpleTable.BASINDATA.getSchema().createTableSql();
 				inGeoframeDb.executeInsertUpdateDeleteSql(sql);
 			}
+			// make sure the output table exists
+			if (!inGeoframeDb.hasTable(GeoFrameSimpleTable.VARIOGRAM.getSchema().getSQLName())) {
+				String sql = GeoFrameSimpleTable.VARIOGRAM.getSchema().createTableSql();
+				inGeoframeDb.executeInsertUpdateDeleteSql(sql);
+			}
 		} catch (Exception e) {
 		}
 	}
@@ -142,7 +148,7 @@ public class KrigingAtCentroid extends HMModel {
 		stations.pm = new DummyProgressMonitor();
 
 		int[] ids = TableUtils.getIntIdArray(inGeoframeDb, GeoFrameGeoTable.HYDRO_METEO_STATION.tableName(),
-				StationSchema.Station.ID.columnName()," where type='" + StationType.METEO + "'");
+				StationSchema.Station.ID.columnName(), " where type='" + StationType.METEO + "'");
 		if (variableReader.isPreCachingMode()) {
 			double[] variableData = variableReader.getCached(timestepIndex);
 			long timestep = variableReader.getCachedTimestamp(timestepIndex);
@@ -154,7 +160,7 @@ public class KrigingAtCentroid extends HMModel {
 				timestepIndex++;
 				variableData = variableReader.getCached(timestepIndex);
 				timestep = variableReader.getCachedTimestamp(timestepIndex);
-				
+
 				pm.worked(1);
 			}
 			pm.done();
@@ -177,6 +183,35 @@ public class KrigingAtCentroid extends HMModel {
 
 		var variogram = SingleStepVariogramEvaluator.createVariogram(stations, h, doDetrended, doIncludeZero,
 				doLogarithmic, variogramType, cutoffDivide, cutoffInput);
+
+		try {
+			String insertSql = GeoFrameSimpleTable.VARIOGRAM.getSchema().buildInsertAll();
+
+			inGeoframeDb.execOnConnection(conn -> {
+				boolean autoCommit = conn.getAutoCommit();
+				conn.setAutoCommit(false);
+				try (IHMPreparedStatement pStmt = conn.prepareStatement(insertSql)) {
+					pStmt.setLong(1, currentT);
+					var variogramParameters = VariogramParameters.Builder.getBuilderFromHM(variogram).build();
+					pStmt.setString(2, variogramParameters.getModelName());
+					pStmt.setInt(3, (int) variogram.get(5)[0]);
+					pStmt.setDouble(4, variogramParameters.getNugget());
+					pStmt.setDouble(5, variogramParameters.getSill());
+					pStmt.setDouble(6, variogramParameters.getRange());
+					pStmt.setBoolean(7, variogramParameters.getIsLocal());
+					pStmt.setBoolean(8, variogramParameters.getIsTrend());
+					pStmt.setDouble(9, variogramParameters.getIntercept());
+					pStmt.setDouble(10, variogramParameters.getSlope());
+					pStmt.addBatch();
+					pStmt.executeBatch();
+					conn.commit();
+					conn.setAutoCommit(autoCommit);
+				}
+				return null;
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 		KrigingPointCase kriging = new KrigingPointCase();
 		SimpleFeatureCollection inBasinsFC = SpatialDbsImportUtils.tableToFeatureFCollection(inGeoframeDb,

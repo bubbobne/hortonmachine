@@ -39,6 +39,13 @@ public class VariogramParameters {
 			this.sill = sill;
 		}
 
+		public static Builder getBuilderFromHM(HashMap<Integer, double[]> variogramHM) {
+			return new VariogramParameters.Builder(VariogramParameters.getVariogramType(variogramHM.get(5)[0]),
+					variogramHM.get(0)[0], variogramHM.get(2)[0], variogramHM.get(1)[0]).setLocal(variogramHM.get(3)[0])
+					.setTrend(variogramHM.get(4)[0]).setTrendIntercept(variogramHM.get(6)[0])
+					.setTrendSlope(variogramHM.get(7)[0]);
+		}
+
 		public Builder setTrend(boolean isTrend) {
 			this.isTrend = isTrend;
 			return this;
