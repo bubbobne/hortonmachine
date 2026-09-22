@@ -36,6 +36,7 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.Sta
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema.StationType;
 import org.hortonmachine.hmachine.modules.statistics.kriging.pointcase.KrigingPointCase;
 import org.hortonmachine.hmachine.modules.statistics.kriging.primarylocation.StationsSelection;
+import org.hortonmachine.hmachine.modules.statistics.kriging.validation.IKrigingOutputValidator;
 import org.hortonmachine.hmachine.modules.statistics.kriging.variogram.theoretical.SingleStepVariogramEvaluator;
 import org.hortonmachine.hmachine.modules.statistics.kriging.variogram.theoretical.VariogramParameters;
 
@@ -98,6 +99,11 @@ public class KrigingAtCentroid extends HMModel {
 	@In
 	public double cutoffInput = 0.0;
 
+	@Description("Specified value chcekcer")
+	@In
+	public IKrigingOutputValidator valueChecker = null;
+	
+	
 	public boolean doOverWrite = false;
 
 	public boolean boundToZero = false;
@@ -228,6 +234,7 @@ public class KrigingAtCentroid extends HMModel {
 		kriging.doIncludeZero = doIncludeZero;
 		kriging.boundedToZero = boundToZero;
 		kriging.parallelComputation = true;
+		kriging.valueChecker = valueChecker;
 
 		kriging.inData = h;
 		kriging.inTheoreticalVariogram = variogram;

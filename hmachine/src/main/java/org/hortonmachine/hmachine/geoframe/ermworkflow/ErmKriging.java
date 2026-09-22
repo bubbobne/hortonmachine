@@ -12,6 +12,8 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.Sta
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.StationSchema.Station;
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema;
 import org.hortonmachine.hmachine.geoframe.utils.KrigingAtCentroid;
+import org.hortonmachine.hmachine.modules.statistics.kriging.validation.IKrigingOutputValidator;
+import org.hortonmachine.hmachine.modules.statistics.kriging.validation.MinMaxKrigingOutputValidator;
 
 import oms3.annotations.Author;
 import oms3.annotations.Description;
@@ -51,6 +53,9 @@ public class ErmKriging extends HMModel {
 
 	@Execute
 	public void process() throws Exception {
+		// TODO: Refine and specify precipitation output validators based on the actual
+		// time step
+		// (e.g., hourly vs daily thresholds) to ensure accurate min/max ranges.
 		try (ASpatialDb db = EDb.GEOPACKAGE.getSpatialDb();) {
 			db.open(inGpkg);
 			int maxId = db.getLong("select max(" + Station.ID.columnName() + ") from " + //
@@ -60,27 +65,26 @@ public class ErmKriging extends HMModel {
 			pm.message("Processing temperature data...");
 			int type = 4;
 			int typeId = VariableSchema.EnvironmentalVariableType.TEMPERATURE.getId();
-//			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
-//				db.executeInsertUpdateDeleteSql(
-//						"DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
-//								BasinDataField.VAR_ID.columnName() + " = " + typeId);
-//			}
-			//processKriging(db, maxId, type, typeId, false);
+			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
+				db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
+						BasinDataField.VAR_ID.columnName() + " = " + typeId);
+			}
+			processKriging(db, maxId, type, typeId, false, new MinMaxKrigingOutputValidator(-40, 50));
 
 			pm.message("Processing precipitation data...");
 			type = 2; // TODO is this the same as below?
 			typeId = VariableSchema.EnvironmentalVariableType.PRECIPITATION.getId();
 			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
-				db.executeInsertUpdateDeleteSql(
-						"DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
-								BasinDataField.VAR_ID.columnName() + " = " + typeId);
+				db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
+						BasinDataField.VAR_ID.columnName() + " = " + typeId);
 			}
-			processKriging(db, maxId, type, typeId, true);
+			processKriging(db, maxId, type, typeId, true, new MinMaxKrigingOutputValidator(0, 80));
 
 		}
 	}
 
-	private void processKriging(ASpatialDb db, int maxId, int type, int typeId, boolean boundToZero) throws Exception {
+	private void processKriging(ASpatialDb db, int maxId, int type, int typeId, boolean boundToZero,
+			IKrigingOutputValidator validator) throws Exception {
 		var valueReader = new GeoframeEnvDatabaseIterator();
 		valueReader.db = db;
 		valueReader.pParameterId = type; // temperature
@@ -89,7 +93,6 @@ public class ErmKriging extends HMModel {
 		valueReader.doRawData = true;
 		valueReader.pMaxId = maxId;
 		valueReader.preCacheData();
-		
 
 		var krigingInterpolator = new KrigingAtCentroid();
 		krigingInterpolator.inGeoframeDBPath = inGpkg;
@@ -97,6 +100,7 @@ public class ErmKriging extends HMModel {
 		krigingInterpolator.variableReader = valueReader;
 		krigingInterpolator.cutoffDivide = 10;
 		krigingInterpolator.boundToZero = boundToZero;
+		krigingInterpolator.valueChecker = validator;
 		krigingInterpolator.init();
 		krigingInterpolator.process();
 	}
@@ -105,7 +109,8 @@ public class ErmKriging extends HMModel {
 		ErmKriging ek = new ErmKriging();
 		ek.inGpkg = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/basin_km9.gpkg";
 		ek.pStartTimestamp = "2008-09-01 01:00";
-		ek.pEndTimestamp ="2024-06-01 01:00";;
+		ek.pEndTimestamp = "2024-06-01 01:00";
+		;
 		ek.doDeleteExistingData = false;
 		ek.process();
 	}
