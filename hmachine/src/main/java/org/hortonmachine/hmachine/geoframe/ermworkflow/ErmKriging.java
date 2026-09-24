@@ -51,36 +51,67 @@ public class ErmKriging extends HMModel {
 	@In
 	public boolean doDeleteExistingData = false;
 
+	private ASpatialDb db;
+	private int maxId;
+
 	@Execute
 	public void process() throws Exception {
 		// TODO: Refine and specify precipitation output validators based on the actual
 		// time step
 		// (e.g., hourly vs daily thresholds) to ensure accurate min/max ranges.
-		try (ASpatialDb db = EDb.GEOPACKAGE.getSpatialDb();) {
+		try {
+			db = EDb.GEOPACKAGE.getSpatialDb();
 			db.open(inGpkg);
-			int maxId = db.getLong("select max(" + Station.ID.columnName() + ") from " + //
+			maxId = db.getLong("select max(" + Station.ID.columnName() + ") from " + //
 					GeoFrameGeoTable.HYDRO_METEO_STATION.tableName() + " WHERE " + //
 					Station.TYPE.columnName() + " = '" + StationSchema.StationType.METEO + "'").intValue();
 
-			pm.message("Processing temperature data...");
-			int type = 4;
-			int typeId = VariableSchema.EnvironmentalVariableType.TEMPERATURE.getId();
-			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
-				db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
-						BasinDataField.VAR_ID.columnName() + " = " + typeId);
-			}
-			processKriging(db, maxId, type, typeId, false, new MinMaxKrigingOutputValidator(-40, 50));
+			processTemperature();
+			processPrecipitation();
 
-			pm.message("Processing precipitation data...");
-			type = 2; // TODO is this the same as below?
-			typeId = VariableSchema.EnvironmentalVariableType.PRECIPITATION.getId();
-			if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
-				db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
-						BasinDataField.VAR_ID.columnName() + " = " + typeId);
-			}
-			processKriging(db, maxId, type, typeId, true, new MinMaxKrigingOutputValidator(0, 80));
-
+		} catch (Exception e) {
+			// TODO: handle exception
 		}
+	}
+
+	public void initDb() {
+		try {
+			if (db == null) {
+				db = EDb.GEOPACKAGE.getSpatialDb();
+				db.open(inGpkg);
+				maxId = db.getLong("select max(" + Station.ID.columnName() + ") from " + //
+						GeoFrameGeoTable.HYDRO_METEO_STATION.tableName() + " WHERE " + //
+						Station.TYPE.columnName() + " = '" + StationSchema.StationType.METEO + "'").intValue();
+			}
+
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+	}
+
+	public void processTemperature() throws Exception {
+
+		pm.message("Processing temperature data...");
+		int type = 4;
+		int typeId = VariableSchema.EnvironmentalVariableType.TEMPERATURE.getId();
+		if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
+			db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
+					BasinDataField.VAR_ID.columnName() + " = " + typeId);
+		}
+		processKriging(db, maxId, type, typeId, false, new MinMaxKrigingOutputValidator(-40, 50));
+
+	}
+
+	public void processPrecipitation() throws Exception {
+		pm.message("Processing precipitation data...");
+		int type = 2; // TODO is this the same as below?
+		int typeId = VariableSchema.EnvironmentalVariableType.PRECIPITATION.getId();
+		if (doDeleteExistingData && db.hasTable(GeoFrameSimpleTable.BASINDATA.getSchema().getSQLName())) {
+			db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
+					BasinDataField.VAR_ID.columnName() + " = " + typeId);
+		}
+		processKriging(db, maxId, type, typeId, true, new MinMaxKrigingOutputValidator(0, 80));
+
 	}
 
 	private void processKriging(ASpatialDb db, int maxId, int type, int typeId, boolean boundToZero,

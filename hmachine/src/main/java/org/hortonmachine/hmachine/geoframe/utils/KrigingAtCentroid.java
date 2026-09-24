@@ -102,8 +102,7 @@ public class KrigingAtCentroid extends HMModel {
 	@Description("Specified value chcekcer")
 	@In
 	public IKrigingOutputValidator valueChecker = null;
-	
-	
+
 	public boolean doOverWrite = false;
 
 	public boolean boundToZero = false;
@@ -134,6 +133,7 @@ public class KrigingAtCentroid extends HMModel {
 				inGeoframeDb.executeInsertUpdateDeleteSql(sql);
 			}
 		} catch (Exception e) {
+			System.out.println(e.getMessage());
 		}
 	}
 
@@ -198,16 +198,18 @@ public class KrigingAtCentroid extends HMModel {
 				conn.setAutoCommit(false);
 				try (IHMPreparedStatement pStmt = conn.prepareStatement(insertSql)) {
 					pStmt.setLong(1, currentT);
+					pStmt.setLong(2, inVariableType);
+
 					var variogramParameters = VariogramParameters.Builder.getBuilderFromHM(variogram).build();
-					pStmt.setString(2, variogramParameters.getModelName());
-					pStmt.setInt(3, (int) variogram.get(5)[0]);
-					pStmt.setDouble(4, variogramParameters.getNugget());
-					pStmt.setDouble(5, variogramParameters.getSill());
-					pStmt.setDouble(6, variogramParameters.getRange());
-					pStmt.setBoolean(7, variogramParameters.getIsLocal());
-					pStmt.setBoolean(8, variogramParameters.getIsTrend());
-					pStmt.setDouble(9, variogramParameters.getIntercept());
-					pStmt.setDouble(10, variogramParameters.getSlope());
+					pStmt.setString(3, variogramParameters.getModelName());
+					pStmt.setInt(4, (int) variogram.get(5)[0]);
+					pStmt.setDouble(5, variogramParameters.getNugget());
+					pStmt.setDouble(6, variogramParameters.getSill());
+					pStmt.setDouble(7, variogramParameters.getRange());
+					pStmt.setBoolean(8, variogramParameters.getIsLocal());
+					pStmt.setBoolean(9, variogramParameters.getIsTrend());
+					pStmt.setDouble(10, variogramParameters.getIntercept());
+					pStmt.setDouble(11, variogramParameters.getSlope());
 					pStmt.addBatch();
 					pStmt.executeBatch();
 					conn.commit();

@@ -102,6 +102,8 @@ public abstract class SimpleAbstractSchema extends AbstractSchema implements Geo
 			return "DOUBLE PRECISION";
 		if (type == String.class)
 			return "TEXT";
+		if (type == Boolean.class)
+			return "BOOLEAN";
 
 		throw new IllegalArgumentException("Unsupported type: " + type);
 	}
