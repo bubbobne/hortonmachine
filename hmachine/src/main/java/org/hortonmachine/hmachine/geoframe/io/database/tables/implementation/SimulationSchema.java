@@ -22,7 +22,8 @@ public class SimulationSchema extends SimpleAbstractSchema {
 	}
 
 	public enum SimulationField implements TableField {
-		TS("ts", Long.class);
+		TS("timestamp", Long.class),
+		BASIN_ID("basin_id", Long.class);
 
 		private final String columnName;
 		private final Class<?> javaType;

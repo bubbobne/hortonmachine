@@ -82,6 +82,10 @@ public class GeoframeRawDataImporter extends HMModel {
 	@In
 	public String inIdField = null;
 
+	public String inActualFieldId = null;
+
+	public String inProviderFieldId = null;
+
 	@In
 	public String inElevationField = null;
 
@@ -197,10 +201,23 @@ public class GeoframeRawDataImporter extends HMModel {
 						if (inElevationField != null) {
 							elevation = (Double) sourceFeature.getAttribute(inElevationField);
 						}
+						String actualId = null;
+						if (inActualFieldId != null) {
+							actualId = (String) sourceFeature.getAttribute(inActualFieldId);
+						}
+						String provider = null;
+						if (inProviderFieldId != null) {
+							provider = (String) sourceFeature.getAttribute(inProviderFieldId);
+						}
+
 						builder.reset();
 						builder.set(Station.GEOM.columnName(), geom);
 						builder.set(Station.ID.columnName(), newId);
 						builder.set(Station.ELEVATION.columnName(), elevation);
+						builder.set(Station.ACTUAL_ID.columnName(), actualId);
+						builder.set(Station.PROVIDER.columnName(), provider);
+						builder.set(Station.ACTIVE.columnName(), true);
+
 						Integer basinId = null;
 						if (basinsFC != null) {
 							basinId = this.getIntersectedBasinId(basinsFC, geom,
@@ -211,8 +228,8 @@ public class GeoframeRawDataImporter extends HMModel {
 							String sql = String.format("UPDATE %s SET %s = %d WHERE %s = %d and %s = '%s'",
 									GeoFrameGeoTable.HYDRO_METEO_STATION.tableName(),
 									StationSchema.Station.BASIN_ID.columnName(), basinId,
-									StationSchema.Station.ID.columnName(), newId, StationSchema.Station.TYPE.columnName(),
-									stationType.name());
+									StationSchema.Station.ID.columnName(), newId,
+									StationSchema.Station.TYPE.columnName(), stationType.name());
 							inGeoframeDb.executeInsertUpdateDeleteSql(sql);
 						}
 
@@ -241,7 +258,7 @@ public class GeoframeRawDataImporter extends HMModel {
 
 				for (int i = 0; i < l; i++) {
 					ids[i] = ((Number) rows.get(i)[idIndex]).intValue();
-					dbId2fileIdsMap.put(ids[i] , ids[i] );
+					dbId2fileIdsMap.put(ids[i], ids[i]);
 				}
 			}
 			if (inMeasurementDataFilePath != null) {

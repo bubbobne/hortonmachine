@@ -271,7 +271,7 @@ public abstract class Kriging {
 						if (!areAllEquals && n1 > 1) {
 
 							interpolatedValue = interpolateValue(sp, coordinate);
-							if (valueChecker == null) {
+							if (valueChecker != null) {
 								valueChecker.setDoubleSupplier(new NearestStationSupplierValue(stations));
 								interpolatedValue = valueChecker.getValidValue(interpolatedValue);
 							}

@@ -65,7 +65,12 @@ public class ErmRadiation extends HMModel {
 	@UI(HMConstants.FILEIN_UI_HINT_RASTER)
 	@In
 	public String inDtm;
-
+	
+	@Description("Input dtm.")
+	@UI(HMConstants.FILEIN_UI_HINT_RASTER)
+	@In
+	public String inSkyView;
+	
 	@Description("Input geoframe data geopackage.")
 	@UI(HMConstants.FILEIN_UI_HINT_VECTOR)
 	@In
@@ -117,8 +122,12 @@ public class ErmRadiation extends HMModel {
 						+ VariableSchema.EnvironmentalVariableType.RADIATION.getId());
 			}
 			
-			var dtm = getRaster("/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/Trentino/Noce/basin_pit.tif");
-			var skyview = getRaster("/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/Trentino/Noce/Noce_skyview.tif");
+			
+
+			var dtm = getRaster(inDtm);
+			var skyview = getRaster(inSkyView);
+			
+			
 			if (downscaleFactor > 1) {
 				dtm = downscaleRaster(dtm, downscaleFactor);
 				skyview = downscaleRaster(skyview, downscaleFactor);

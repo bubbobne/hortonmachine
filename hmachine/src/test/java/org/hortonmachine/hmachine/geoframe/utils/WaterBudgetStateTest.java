@@ -42,7 +42,7 @@ public class WaterBudgetStateTest {
 
     @Test
     public void getLastSimulationStep_returnsMinusOne_whenTableDoesNotExistYet() throws Exception {
-        long lastStep = TableUtils.getLastStepTimestamp(db, TABLE_NAME);
+        long lastStep = TableUtils.getLastSimulatedTimestamp(db, TABLE_NAME);
         assertEquals(-1, lastStep);
     }
 
@@ -62,7 +62,7 @@ public class WaterBudgetStateTest {
         insertState(1, 2000L, 10.0, 20.0);
         insertState(2, 2000L, 30.0, 40.0);
 
-        long lastStep = TableUtils.getLastStepTimestamp(db, TABLE_NAME);
+        long lastStep = TableUtils.getLastSimulatedTimestamp(db, TABLE_NAME);
         assertEquals(2000L, lastStep);
 
         WaterBudgetInitialConditions conditions = WaterBudgetState.loadLastState(db, TABLE_NAME, 2);

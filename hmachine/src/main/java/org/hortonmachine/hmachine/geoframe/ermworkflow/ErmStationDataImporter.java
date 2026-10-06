@@ -55,6 +55,13 @@ public class ErmStationDataImporter extends HMModel {
 	@Description("Station id field in meteo csv files.")
 	@In
 	public String pMeteoIdField = "ID";
+	
+	@Description("Station id field in meteo csv files.")
+	@In
+	public String pActualIdField = "ID";
+	@Description("Station id field in meteo csv files.")
+	@In
+	public String pProvider = "ID";
 
 	@Description("Temperatures csv file.")
 	@UI(HMConstants.FILEIN_UI_HINT_CSV)
@@ -89,6 +96,10 @@ public class ErmStationDataImporter extends HMModel {
 		gfImporter.inStartDate = pStartTimestamp;
 		gfImporter.inEndDate = pEndTimestamp;
 		gfImporter.inElevationField = "z_dem";
+		gfImporter.inActualFieldId = "ACT_ID";
+		gfImporter.inProviderFieldId = "PROVIDER";
+
+
 		gfImporter.inIdField = pMeteoIdField;
 		gfImporter.timeResolution = TimeResolution.valueOf(pTimeResolution);
 		gfImporter.doOverWrite = true;
@@ -113,9 +124,12 @@ public class ErmStationDataImporter extends HMModel {
 		}
 
 		if (inStreamGaugesCsv != null && Files.exists(Path.of(inStreamGaugesCsv))) {
+			gfImporter.doOverWrite = false;
+
 			gfImporter.inMeasurementDataFilePath = inStreamGaugesCsv;
 			gfImporter.inMeasurementsPointFilePath = inStreamGauges;
-			gfImporter.inIdField = pStreamGaugesIdField;
+			gfImporter.inIdField = pStreamGaugesIdField;	
+			gfImporter.inElevationField = null;
 			gfImporter.stationType = StationType.STREAM_GAUGE;
 			gfImporter.inVariableType = EnvironmentalVariableType.DISCHARGE.getId();
 			gfImporter.process();
@@ -124,13 +138,13 @@ public class ErmStationDataImporter extends HMModel {
 	}
 
 	public static void main(String[] args) throws Exception {
-		String workspace = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/";
+		String workspace = "/home/andreisd/Desktop/geoframe_sito_API/data/";
 		ErmStationDataImporter ei = new ErmStationDataImporter();
 		ei.inGpkg = workspace + "/basin_km9.gpkg";
-//		ei.pStartTimestamp = "1990-01-01 01:00";
-//		ei.pEndTimestamp = "2024-07-17 23:00";
-//		ei.pTimeResolution = ErmCommonData.TIME_RESOLUTION;
-//		ei.inMeteoStations = workspace + "stations_tot.shp";
+		ei.pStartTimestamp = "1990-01-01 01:00";
+		ei.pEndTimestamp = "2024-07-17 23:00";
+		ei.pTimeResolution = ErmCommonData.TIME_RESOLUTION;
+//		ei.inMeteoStations = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/stations_tot.shp";
 //		ei.inTemperaturesCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/"
 //				+ "temperature_kriging_ready.csv";
 //		ei.inPrecipitationCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/"
@@ -145,15 +159,16 @@ public class ErmStationDataImporter extends HMModel {
 		ei.inMeteoStations = null;
 		ei.inTemperaturesCsv = null;
 		ei.inPrecipitationCsv = null;
-//		ei.inStreamGauges = "/home/andreisd/Documents/project/data_hm/vermiglio_dtm/inputs/idrometri.shp";
-//		ei.pStreamGaugesIdField = "idstazione";
-//		ei.inStreamGaugesCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/simulazioni/nearest_station_NOCE_10km/data/Q_vermiglio.csv";
 
-//		ei.process();
+		ei.inStreamGauges = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/Trentino/Noce/idrometri_sgiustinacorto_pochi.shp";
+		ei.pStreamGaugesIdField = "idstazione";
+		ei.inStreamGaugesCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/simulazioni/GU10-GRIDW/data/Q_vermiglio.csv";
+
+		//ei.process();
 
 		ei.inStreamGauges = null;
 		ei.pStreamGaugesIdField = "idstazione";
-		ei.inStreamGaugesCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/simulazioni/nearest_station_NOCE_10km/data/Q_male.csv";
+		ei.inStreamGaugesCsv = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/simulazioni/GU10-GRIDW/data/Q_male.csv";
 		ei.process();
 
 	}

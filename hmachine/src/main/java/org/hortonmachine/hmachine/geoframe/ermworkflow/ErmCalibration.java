@@ -4,6 +4,7 @@ import org.hortonmachine.gears.utils.optimizers.CostFunctions;
 import org.hortonmachine.gears.utils.optimizers.particleswarm.PSConfig;
 import org.hortonmachine.hmachine.geoframe.calibration.WaterBudgetCalibration;
 import org.hortonmachine.hmachine.geoframe.calibration.WaterBudgetCalibrationResult;
+import org.hortonmachine.hmachine.geoframe.utils.IWaterBudgetSimulationRunner;
 
 import oms3.annotations.Author;
 import oms3.annotations.Description;
@@ -74,7 +75,7 @@ public class ErmCalibration extends ErmBase {
 			psConfig.c2 = pC2;
 			psConfig.w0 = pW0;
 			psConfig.decay = pDecay;
-
+			observedDischarge = IWaterBudgetSimulationRunner.getObservedDischarge(db, rootNode, inFromTimestamp, inToTimestamp);
 			WaterBudgetCalibrationResult psoCalibrationResult = WaterBudgetCalibration.psoCalibration(psConfig,
 					maxBasinId, basinAreas, rootNode, pTimeStepMinutes, observedDischarge, pCostFunction,
 					pCalibrationThreadCount, precipReader, tempReader, etpReader, runner, spinUpTimesteps, doWriteState,
@@ -90,7 +91,7 @@ public class ErmCalibration extends ErmBase {
 
 	public static void main(String[] args) throws Exception {
 		ErmCalibration cal = new ErmCalibration();
-		cal.inGeopackagePath = "/home/andreisd/Documents/project/uni/ARTICOLO_KRIGING/project_grid/data/meteo_data/basin_km9.gpkg";
+		cal.inGeopackagePath = "/home/andreisd/Desktop/geoframe_sito_API/data//basin_km9.gpkg";
 		cal.inFromTimestamp = ErmCommonData.START_TIMESTAMP + ":00";
 		cal.inToTimestamp = ErmCommonData.END_TIMESTAMP + ":00";
 		cal.pTimeStepMinutes = 60;
@@ -98,7 +99,7 @@ public class ErmCalibration extends ErmBase {
 		cal.pPsoIterations = 300;
 		cal.pParticlesNum = 20;
 		cal.doWriteState = false;
-		cal.outBasinId = 2877;
+		cal.outBasinId = 3207;
 		cal.process();
 	}
 }

@@ -72,15 +72,15 @@ public class RadiationAtCentroid extends HMModel {
 	@Unit("-")
 	@In
 	public double epsilonS = 0.98;
-	
+
 	@Description("Coefficient to take into account the cloud cover, set equal to 0 for clear sky conditions ")
 	@In
 	public double aCloud = 0;
-	
+
 	@Description("Exponent  to take into account the cloud cover, set equal to 1 for clear sky conditions")
 	@In
 	public double bCloud = 1;
-	
+
 	@Description("The expected time resolution of the data. Daily and hourly (default) is supported.")
 	@In
 	public TimeResolution pTimeResolution = TimeResolution.HOURLY;
@@ -92,11 +92,11 @@ public class RadiationAtCentroid extends HMModel {
 	public int pDailySubSamples = 24;
 
 	public double alpha = 0.26;
-	
+
 	@Description("Ozone layer thickness in cm")
 	@In
 	public double pCmO3 = 0.6;
-	
+
 	@Description("The soil albedo.")
 	@In
 	public double pAlphagp = 0.9;
@@ -191,10 +191,9 @@ public class RadiationAtCentroid extends HMModel {
 	 * Builds a freshly configured {@link Lwrb} instance.
 	 *
 	 * <p>
-	 * Used both for the single sequential instance and, one per worker
-	 * thread, for the parallel pre-caching path in {@link #process()}, since
-	 * {@link Lwrb} keeps per-call mutable state and is not safe to share
-	 * across threads.
+	 * Used both for the single sequential instance and, one per worker thread, for
+	 * the parallel pre-caching path in {@link #process()}, since {@link Lwrb} keeps
+	 * per-call mutable state and is not safe to share across threads.
 	 */
 	private Lwrb createLwrb() {
 		Lwrb l = new Lwrb();
@@ -213,8 +212,8 @@ public class RadiationAtCentroid extends HMModel {
 
 	/**
 	 * Builds a freshly configured {@link ShortwaveRadiationBalancePointCase}
-	 * instance. See {@link #createLwrb()} for why this needs to be per-thread
-	 * in the parallel path.
+	 * instance. See {@link #createLwrb()} for why this needs to be per-thread in
+	 * the parallel path.
 	 */
 	private ShortwaveRadiationBalancePointCase createSwrb() {
 		ShortwaveRadiationBalancePointCase s = new ShortwaveRadiationBalancePointCase();
@@ -243,7 +242,7 @@ public class RadiationAtCentroid extends HMModel {
 		if (inTemperatureReader.isPreCachingMode()) {
 			pm.beginTask("Processing radiation data...", inTemperatureReader.getCachedSize());
 			// We can do parallel processing of timesteps only in cached mode
-			// because each the timesteps are indexed and independent 
+			// because each the timesteps are indexed and independent
 			int nThreads = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
 			ExecutorService executor = Executors.newFixedThreadPool(nThreads);
 			ThreadLocal<Lwrb> tlLwrb = ThreadLocal.withInitial(this::createLwrb);
@@ -270,6 +269,10 @@ public class RadiationAtCentroid extends HMModel {
 						chunkTasks.clear();
 					}
 				}
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				System.out.println(e.getMessage());
+				throw new RuntimeException("Radiation computation interrupted while waiting for parallel tasks", e);
 			} finally {
 				executor.shutdown();
 			}
@@ -345,14 +348,14 @@ public class RadiationAtCentroid extends HMModel {
 	/**
 	 * Computes one timestep using thread-confined {@link Lwrb}/
 	 * {@link ShortwaveRadiationBalancePointCase}/{@link NetRadiationPointCase}
-	 * instances (one per worker thread, lazily built on first use so the
-	 * expensive one-time raster setup in each of them only happens once per
-	 * thread, not once per timestep).
+	 * instances (one per worker thread, lazily built on first use so the expensive
+	 * one-time raster setup in each of them only happens once per thread, not once
+	 * per timestep).
 	 *
 	 * <p>
-	 * The result map is copied out of {@code nrpc.outHMnetRad} because that
-	 * field is reused and overwritten in place on every {@code process()}
-	 * call on the same instance.
+	 * The result map is copied out of {@code nrpc.outHMnetRad} because that field
+	 * is reused and overwritten in place on every {@code process()} call on the
+	 * same instance.
 	 */
 	private TimestepResult computeTimestepParallel(int idx, int[] ids, ThreadLocal<Lwrb> tlLwrb,
 			ThreadLocal<ShortwaveRadiationBalancePointCase> tlSwrb, ThreadLocal<NetRadiationPointCase> tlNrpc)
@@ -382,25 +385,26 @@ public class RadiationAtCentroid extends HMModel {
 	}
 
 	/**
-	 * Computes net radiation (W/m2) for one timestep, dispatching to
-	 * either a single hourly sample or a daily average of 24 hourly samples
-	 * depending on the time resolution.
+	 * Computes net radiation (W/m2) for one timestep, dispatching to either a
+	 * single hourly sample or a daily average of 24 hourly samples depending on the
+	 * time resolution.
 	 *
 	 * <p>
 	 * The returned map is always a fresh copy, independent of
-	 * {@code nrpc.outHMnetRad}, which is reused and overwritten in place on
-	 * every {@code process()} call - without a copy, a thread going on to
-	 * compute another timestep before this result is consumed would leave the
-	 * caller holding a reference to that later timestep's data instead.
+	 * {@code nrpc.outHMnetRad}, which is reused and overwritten in place on every
+	 * {@code process()} call - without a copy, a thread going on to compute another
+	 * timestep before this result is consumed would leave the caller holding a
+	 * reference to that later timestep's data instead.
 	 */
 	private HashMap<Integer, double[]> computeNetRadiation(Lwrb lwrbLocal, ShortwaveRadiationBalancePointCase swrbLocal,
-			NetRadiationPointCase nrpcLocal, HashMap<Integer, double[]> temperature, HashMap<Integer, double[]> humidity,
-			HashMap<Integer, double[]> clearSky, long t) throws Exception {
+			NetRadiationPointCase nrpcLocal, HashMap<Integer, double[]> temperature,
+			HashMap<Integer, double[]> humidity, HashMap<Integer, double[]> clearSky, long t) throws Exception {
 		lwrbLocal.inAirTemperatureValuesHM = temperature;
 		lwrbLocal.inSoilTempratureValuesHM = temperature;
 		lwrbLocal.inHumidityValuesHM = humidity;
 		lwrbLocal.inClearnessIndexValuesHM = clearSky;
-		// Longwave depends only on temperature/humidity/clearness - not on time of day -
+		// Longwave depends only on temperature/humidity/clearness - not on time of day
+		// -
 		// so one process() call covers the whole timestep, hourly or daily alike.
 		lwrbLocal.process();
 
@@ -427,15 +431,15 @@ public class RadiationAtCentroid extends HMModel {
 	 *
 	 * <p>
 	 * {@link ShortwaveRadiationBalancePointCase} only ever evaluates the sun's
-	 * position (and the DEM-derived shading/skyview weighting that goes with
-	 * it) at one instant, and that DEM-wide shadow recomputation is what
-	 * dominates runtime. With daily-resolution input there is a single
-	 * temperature/humidity/clearness reading for the whole day, so this
-	 * processes that same daily reading at {@link #pDailySubSamples} sun
-	 * positions evenly spaced across the day and averages the results. At the
-	 * default of 24 this means running hourly resolution for the day and
-	 * averaging the 24 outputs; lower values are cheaper but coarser
-	 * approximations, useful for quick test runs.
+	 * position (and the DEM-derived shading/skyview weighting that goes with it) at
+	 * one instant, and that DEM-wide shadow recomputation is what dominates
+	 * runtime. With daily-resolution input there is a single
+	 * temperature/humidity/clearness reading for the whole day, so this processes
+	 * that same daily reading at {@link #pDailySubSamples} sun positions evenly
+	 * spaced across the day and averages the results. At the default of 24 this
+	 * means running hourly resolution for the day and averaging the 24 outputs;
+	 * lower values are cheaper but coarser approximations, useful for quick test
+	 * runs.
 	 */
 	private HashMap<Integer, double[]> averageDailyNetRadiation(Lwrb lwrbLocal,
 			ShortwaveRadiationBalancePointCase swrbLocal, NetRadiationPointCase nrpcLocal, long dayTimestamp)
@@ -482,12 +486,13 @@ public class RadiationAtCentroid extends HMModel {
 
 	/**
 	 * Runs a chunk of timestep tasks on the executor. Mind that this is where the
-	 * actual radiation computation is done, blocking until the whole chunk
-	 * is done. Because then all the results are written to db sequentially.
-	 * Keeping the db write single-threaded is necessary with GeoPackage/SQLite.
+	 * actual radiation computation is done, blocking until the whole chunk is done.
+	 * Because then all the results are written to db sequentially. Keeping the db
+	 * write single-threaded is necessary with GeoPackage/SQLite.
 	 */
 	private void computeAndWriteChunk(ExecutorService executor, List<Callable<TimestepResult>> tasks, String insertSql)
 			throws Exception {
+
 		List<Future<TimestepResult>> futures = executor.invokeAll(tasks);
 		inGeoframeDb.execOnConnection(conn -> {
 			boolean autoCommit = conn.getAutoCommit();

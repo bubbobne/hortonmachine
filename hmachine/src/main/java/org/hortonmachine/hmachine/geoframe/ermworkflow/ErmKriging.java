@@ -13,7 +13,7 @@ import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.Sta
 import org.hortonmachine.hmachine.geoframe.io.database.tables.implementation.VariableSchema;
 import org.hortonmachine.hmachine.geoframe.utils.KrigingAtCentroid;
 import org.hortonmachine.hmachine.modules.statistics.kriging.validation.IKrigingOutputValidator;
-import org.hortonmachine.hmachine.modules.statistics.kriging.validation.MinMaxKrigingOutputValidator;
+import org.hortonmachine.hmachine.modules.statistics.kriging.validation.VariableRangeValidators;
 
 import oms3.annotations.Author;
 import oms3.annotations.Description;
@@ -51,14 +51,15 @@ public class ErmKriging extends HMModel {
 	@In
 	public boolean doDeleteExistingData = false;
 
+	@Description("Time resolution of the station data (HOURLY or DAILY), selects the validator ranges.")
+	@In
+	public String pTimeResolution = "HOURLY";
+
 	private ASpatialDb db;
 	private int maxId;
 
 	@Execute
 	public void process() throws Exception {
-		// TODO: Refine and specify precipitation output validators based on the actual
-		// time step
-		// (e.g., hourly vs daily thresholds) to ensure accurate min/max ranges.
 		try {
 			db = EDb.GEOPACKAGE.getSpatialDb();
 			db.open(inGpkg);
@@ -98,7 +99,7 @@ public class ErmKriging extends HMModel {
 			db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
 					BasinDataField.VAR_ID.columnName() + " = " + typeId);
 		}
-		processKriging(db, maxId, type, typeId, false, new MinMaxKrigingOutputValidator(-40, 50));
+		processKriging(db, maxId, type, typeId, false, validatorFor(VariableSchema.EnvironmentalVariableType.TEMPERATURE));
 
 	}
 
@@ -110,8 +111,12 @@ public class ErmKriging extends HMModel {
 			db.executeInsertUpdateDeleteSql("DELETE FROM " + GeoFrameSimpleTable.BASINDATA.tableName() + " WHERE " + //
 					BasinDataField.VAR_ID.columnName() + " = " + typeId);
 		}
-		processKriging(db, maxId, type, typeId, true, new MinMaxKrigingOutputValidator(0, 80));
+		processKriging(db, maxId, type, typeId, true, validatorFor(VariableSchema.EnvironmentalVariableType.PRECIPITATION));
 
+	}
+
+	private IKrigingOutputValidator validatorFor(VariableSchema.EnvironmentalVariableType type) {
+		return VariableRangeValidators.forVariable(type, VariableSchema.TimeResolution.valueOf(pTimeResolution));
 	}
 
 	private void processKriging(ASpatialDb db, int maxId, int type, int typeId, boolean boundToZero,

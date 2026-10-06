@@ -136,7 +136,7 @@ public class PrestleyETAtCentroid extends HMModel {
 				// double[] pressureData = pressureReader.getCached(timestepIndex);
 				double[] pressureData = null;
 				if (inPressurReader != null && inPressurReader.next()) {
-					pressureData = inTempReader.outData;
+					pressureData = inPressurReader.outData;
 				}
 				processTimestep(inNetData, tempData, pressureData, inTempReader.currentT);
 				pm.worked(1);
