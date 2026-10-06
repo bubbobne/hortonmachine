@@ -16,6 +16,7 @@ import org.geotools.data.geojson.GeoJSONReader;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
 import org.hortonmachine.gears.utils.crs.HMCrsRegistry;
+import org.hortonmachine.gears.io.stac.auth.HMStacAccess;
 import org.hortonmachine.gears.utils.time.ETimeUtilities;
 import org.locationtech.jts.geom.Geometry;
 
@@ -38,6 +39,7 @@ public class HMStacItem {
     private Date end;
     private Date creationDateCet;
     private String errorMessage;
+    private HMStacAccess access;
 
     private HMStacItem() {
     }
@@ -177,7 +179,101 @@ public class HMStacItem {
         return epsg;
     }
 
+    /**
+     * @param access the access context used to read the assets, null if not needed.
+     */
+    public void setAccess( HMStacAccess access ) {
+        this.access = access;
+    }
+
+    /**
+     * @return the access context used to read the assets or null.
+     */
+    public HMStacAccess getAccess() {
+        return access;
+    }
+
+    /**
+     * @return the original feature as read from the stac service (geometry in WGS84).
+     */
+    public SimpleFeature getFeature() {
+        return feature;
+    }
+
+    /**
+     * @return the version of the item (<code>version</code> of the STAC Version extension) or null.
+     */
+    public String getVersion() {
+        Object version = getAttributeIfExists("version");
+        return version != null ? version.toString() : null;
+    }
+
+    /**
+     * @return <code>true</code> if the item is marked as deprecated (<code>deprecated</code> of the
+     *          STAC Version extension), i.e. superseded by a newer version.
+     */
+    public boolean isDeprecated() {
+        Object deprecated = getAttributeIfExists("deprecated");
+        return deprecated != null && Boolean.parseBoolean(deprecated.toString());
+    }
+
+    /**
+     * @return <code>true</code> if the item has version information (STAC Version extension fields or links).
+     */
+    public boolean hasVersionInfo() {
+        return getAttributeIfExists("version") != null || getAttributeIfExists("deprecated") != null
+                || getLinkHref("latest-version") != null || getLinkHref("predecessor-version") != null
+                || getLinkHref("successor-version") != null;
+    }
+
+    /**
+     * Get the href of the first link with the given relation type, as it is in the item
+     * (it can be relative to the item document).
+     *
+     * @param rel the relation type, e.g. <code>latest-version</code>.
+     * @return the href or null if there is no such link.
+     */
+    public String getLinkHref( String rel ) {
+        Map<Object, Object> userData = feature.getUserData();
+        if (userData == null)
+            return null;
+        Map<String, JsonNode> top = (Map<String, JsonNode>) userData.get(GeoJSONReader.TOP_LEVEL_ATTRIBUTES);
+        if (top == null || top.get("links") == null)
+            return null;
+        for( JsonNode link : top.get("links") ) {
+            if (rel.equals(link.path("rel").asText()))
+                return link.path("href").asText(null);
+        }
+        return null;
+    }
+
+    private Object getAttributeIfExists( String name ) {
+        return feature.getFeatureType().getDescriptor(name) != null ? feature.getAttribute(name) : null;
+    }
+
+    /**
+     * @return the list of assets that can be handled by an available asset handler.
+     */
     public List<HMStacAsset> getAssets() {
+        List<HMStacAsset> assetsList = new ArrayList<>();
+        for( HMStacAsset hmAsset : getAllAssets() ) {
+            if (hmAsset.isValid()) {
+                assetsList.add(hmAsset);
+            } else {
+                String errorMessageTmp = "Asset " + hmAsset.getId() + " is not valid: " + hmAsset.getNonValidReason();
+                if (errorMessage == null || !errorMessage.equals(errorMessageTmp)) {
+                    errorMessage = errorMessageTmp;
+                    System.err.println(errorMessage);
+                }
+            }
+        }
+        return assetsList;
+    }
+
+    /**
+     * @return the list of all assets, also those not supported by any handler (see {@link HMStacAsset#isValid()}).
+     */
+    public List<HMStacAsset> getAllAssets() {
         List<HMStacAsset> assetsList = new ArrayList<>();
         Map<Object, Object> userData = feature.getUserData();
         if (userData != null) {
@@ -186,20 +282,11 @@ public class HMStacItem {
                 ObjectNode assets = (ObjectNode) top.get("assets");
 
                 if (assets != null) {
-                    Iterator<String> assetIds= assets.fieldNames();
-                    while ( assetIds.hasNext() ) {
+                    Iterator<String> assetIds = assets.fieldNames();
+                    while( assetIds.hasNext() ) {
                         String assetId = assetIds.next();
                         JsonNode assetNode = assets.get(assetId);
-                        HMStacAsset hmAsset = new HMStacAsset(assetId, assetNode);
-                        if (hmAsset.isValid()) {
-                            assetsList.add(hmAsset);
-                        } else {
-                        	String errorMessageTmp = "Asset " + assetId + " is not valid: " + hmAsset.getNonValidReason();
-                        	if (errorMessage == null || !errorMessage.equals(errorMessageTmp)) {
-								errorMessage = errorMessageTmp;
-								System.err.println(errorMessage);
-							}
-						}
+                        assetsList.add(new HMStacAsset(assetId, assetNode, access));
                     }
                 }
             }

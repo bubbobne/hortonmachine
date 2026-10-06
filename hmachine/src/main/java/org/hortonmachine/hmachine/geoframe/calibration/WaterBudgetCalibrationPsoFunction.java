@@ -43,8 +43,8 @@ public class WaterBudgetCalibrationPsoFunction implements IPSFunction {
 		this.printDebugInfo = printDebugInfo;
 
 		runner = new WaterSimulationRunner();
-		runner.configure(timeStepMinutes, maxBasinId, rootNode, basinAreas, doParallel, writeState,
-				doTopologicallyOrdered, null, pm);
+		runner.configure(timeStepMinutes, maxBasinId, rootNode, basinAreas, doParallel,doTopologicallyOrdered, writeState,
+				 null, pm);
 	}
 
 	@Override

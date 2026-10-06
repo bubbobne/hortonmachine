@@ -125,8 +125,8 @@ public class WaterBudgetCalibration {
 				WaterBudgetParameters.WaterBudgetGroundParameters.fRange() };
 
 		IPSFunction wbFunction = new WaterBudgetCalibrationPsoFunction(timeStepMinutes, observedDischarge, maxBasinId,
-				basinAreas, rootNode, precipReader, tempReader, etpReader, spinUpTimesteps, costFunction, false,
-				true, writeState, pm, printDebugInfo);
+				basinAreas, rootNode, precipReader, tempReader, etpReader, spinUpTimesteps, costFunction, true,
+				false, writeState, pm, printDebugInfo);
 
 		PSEngine engine = new PSEngine(psConfig.particlesNum, psConfig.maxIterations, psConfig.c1, psConfig.c2, psConfig.w0, psConfig.decay, wbFunction,
 				calibrationThreadCount, "PSO-Waterbudget", pm);

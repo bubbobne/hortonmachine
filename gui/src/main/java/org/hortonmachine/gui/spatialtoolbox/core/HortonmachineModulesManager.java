@@ -18,7 +18,6 @@
 package org.hortonmachine.gui.spatialtoolbox.core;
 
 import java.lang.reflect.Field;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,17 +25,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.hortonmachine.cli.ModuleDescriptor;
 import org.hortonmachine.dbs.log.Logger;
-import org.hortonmachine.gears.JGrassGears;
 import org.hortonmachine.gears.libs.modules.HMConstants;
 import org.hortonmachine.gears.libs.modules.HMModel;
-import org.hortonmachine.hmachine.HortonMachine;
-import org.hortonmachine.lesto.Lesto;
-import org.hortonmachine.modules.Modules;
+import org.hortonmachine.gears.libs.modules.HMModelRegistry;
 
 import oms3.Access;
 import oms3.ComponentAccess;
@@ -56,12 +52,7 @@ import oms3.annotations.Unit;
 public class HortonmachineModulesManager {
     private static HortonmachineModulesManager modulesManager;
 
-    private List<String> loadedJarsList = new ArrayList<String>();
-    private List<String> modulesJarsList = new ArrayList<String>();
-
     private TreeMap<String, List<ModuleDescription>> modulesMap = new TreeMap<String, List<ModuleDescription>>();
-
-    private URLClassLoader jarClassloader;
 
     private HortonmachineModulesManager() {
     }
@@ -83,53 +74,12 @@ public class HortonmachineModulesManager {
                 return;
             }
         }
-        LinkedHashMap<String, Class< ? >> moduleNames2Classes = Modules.getInstance().moduleName2Class;
-        // LinkedHashMap<String, List<ClassField>> moduleName2Fields =
-        // Modules.getInstance().moduleName2Fields;
-
-        LinkedHashMap<String, Class< ? >> lestoModuleNames2Class = Lesto.getInstance().moduleName2Class;
-        // LinkedHashMap<String, List<ClassField>> lestoModuleName2Fields =
-        // Lesto.getInstance().moduleName2Fields;
-
-        // also gather horton and gears
-        HortonMachine.getInstance();
-        Map<String, Class< ? >> gearsModuleName2Class = JGrassGears.getInstance().moduleName2Class;
-
-        for( Entry<String, Class< ? >> entry : lestoModuleNames2Class.entrySet() ) {
-            String name = entry.getKey();
-            if (name.startsWith("Oms")) {
-                continue;
-            }
-
-            moduleNames2Classes.put(name, entry.getValue());
-        }
-        for( Entry<String, Class< ? >> entry : gearsModuleName2Class.entrySet() ) {
-            String name = entry.getKey();
-            if (name.startsWith("Oms")) {
-                continue;
-            }
-
-            moduleNames2Classes.put(name, entry.getValue());
-        }
-
-        // pick up any external modules registered via SPI
-        ServiceLoader<HMModel> spiModules = ServiceLoader.load(HMModel.class);
-        for( HMModel spiModule : spiModules ) {
-            Class< ? > clazz = spiModule.getClass();
-            UI uiHints = clazz.getAnnotation(UI.class);
-            if (uiHints != null && uiHints.value().contains(HMConstants.HIDE_UI_HINT)) {
-                continue;
-            }
-            Label label = clazz.getAnnotation(Label.class);
-            if (label != null && label.value().trim().isEmpty()) {
-                continue;
-            }
-            String name = clazz.getSimpleName();
-            if (name.startsWith("Oms")) {
-                continue;
-            }
-            if (!moduleNames2Classes.containsKey(name)) {
-                moduleNames2Classes.put(name, clazz);
+        // all modules registered via SPI, also those of external jars
+        Map<String, Class< ? >> moduleNames2Classes = new LinkedHashMap<>();
+        for( Class< ? extends HMModel> modelClass : HMModelRegistry.getModelClasses() ) {
+            // the same modules of the command line and the QGIS plugin
+            if (!moduleNames2Classes.containsKey(modelClass.getSimpleName()) && ModuleDescriptor.isAvailable(modelClass)) {
+                moduleNames2Classes.putIfAbsent(modelClass.getSimpleName(), modelClass);
             }
         }
 
@@ -138,18 +88,7 @@ public class HortonmachineModulesManager {
             try {
                 String simpleName = moduleClass.getSimpleName();
 
-                UI uiHints = moduleClass.getAnnotation(UI.class);
-                if (uiHints != null) {
-                    String uiHintStr = uiHints.value();
-                    if (uiHintStr.contains(HMConstants.HIDE_UI_HINT)) {
-                        continue;
-                    }
-                }
-
                 Label category = moduleClass.getAnnotation(Label.class);
-                if (category != null && category.value().trim().isEmpty()) {
-                    continue;
-                }
                 String categoryStr = HMConstants.OTHER;
                 if (category != null) {
                     categoryStr = category.value();
@@ -192,21 +131,12 @@ public class HortonmachineModulesManager {
                     addOutput(access, module);
                 }
 
-                if (categoryStr.equals(HMConstants.GRIDGEOMETRYREADER) || categoryStr.equals(HMConstants.RASTERREADER)
-                        || categoryStr.equals(HMConstants.RASTERWRITER) || categoryStr.equals(HMConstants.FEATUREREADER)
-                        || categoryStr.equals(HMConstants.FEATUREWRITER) || categoryStr.equals(HMConstants.GENERICREADER)
-                        || categoryStr.equals(HMConstants.GENERICWRITER) || categoryStr.equals(HMConstants.HASHMAP_READER)
-                        || categoryStr.equals(HMConstants.HASHMAP_WRITER) || categoryStr.equals(HMConstants.LIST_READER)
-                        || categoryStr.equals(HMConstants.LIST_WRITER)) {
-                    // ignore for now
-                } else {
-                    List<ModuleDescription> modulesList4Category = modulesMap.get(categoryStr);
-                    if (modulesList4Category == null) {
-                        modulesList4Category = new ArrayList<ModuleDescription>();
-                        modulesMap.put(categoryStr, modulesList4Category);
-                    }
-                    modulesList4Category.add(module);
+                List<ModuleDescription> modulesList4Category = modulesMap.get(categoryStr);
+                if (modulesList4Category == null) {
+                    modulesList4Category = new ArrayList<ModuleDescription>();
+                    modulesMap.put(categoryStr, modulesList4Category);
                 }
+                modulesList4Category.add(module);
 
             } catch (Exception | NoClassDefFoundError e) {
                 if (moduleClass != null)
@@ -222,39 +152,27 @@ public class HortonmachineModulesManager {
     }
 
     private void addInput( Access access, ModuleDescription module ) throws Exception {
+        addField(access, module, true);
+    }
+
+    private void addOutput( Access access, ModuleDescription module ) throws Exception {
+        addField(access, module, false);
+    }
+
+    private void addField( Access access, ModuleDescription module, boolean isInput ) throws Exception {
         Field field = access.getField();
+        String fieldName = field.getName();
+        if (doIgnore(fieldName)) {
+            return;
+        }
         Description descriptionAnn = field.getAnnotation(Description.class);
         String descriptionStr = "No description available";
         if (descriptionAnn != null) {
             descriptionStr = AnnotationUtilities.getLocalizedDescription(descriptionAnn);
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(descriptionStr);
-
-        Unit unitAnn = field.getAnnotation(Unit.class);
-        if (unitAnn != null) {
-            sb.append(" [");
-            sb.append(unitAnn.value());
-            sb.append("]");
-        }
-        Range rangeAnn = field.getAnnotation(Range.class);
-        if (rangeAnn != null) {
-            sb.append(" [");
-            sb.append(rangeAnn.min());
-            sb.append(" ,");
-            sb.append(rangeAnn.max());
-            sb.append("]");
-        }
-        descriptionStr = sb.toString();
-
-        String fieldName = field.getName();
-        if (doIgnore(fieldName)) {
-            return;
-        }
         Class< ? > fieldClass = field.getType();
         Object fieldValue = access.getFieldValue();
-
         String defaultValue = ""; //$NON-NLS-1$
         if (fieldValue != null) {
             defaultValue = fieldValue.toString();
@@ -266,58 +184,47 @@ public class HortonmachineModulesManager {
             uiHint = uiHintAnn.value();
         }
 
-        module.addInput(fieldName, fieldClass.getCanonicalName(), descriptionStr, defaultValue, uiHint);
+        FieldData fieldData;
+        if (isInput) {
+            fieldData = module.addInput(fieldName, fieldClass.getCanonicalName(), descriptionStr, defaultValue, uiHint);
+        } else {
+            fieldData = module.addOutput(fieldName, fieldClass.getCanonicalName(), descriptionStr, defaultValue, uiHint);
+        }
+        Unit unitAnn = field.getAnnotation(Unit.class);
+        if (unitAnn != null && !unitAnn.value().isBlank()) {
+            fieldData.unit = unitAnn.value().trim();
+        }
+        Range rangeAnn = field.getAnnotation(Range.class);
+        if (rangeAnn != null) {
+            fieldData.range = formatRange(rangeAnn);
+        }
+    }
+
+    /**
+     * Format a range, leaving out the bounds that are the annotation defaults.
+     */
+    private static String formatRange( Range range ) {
+        boolean hasMin = range.min() != Double.MIN_VALUE;
+        boolean hasMax = range.max() != Double.MAX_VALUE;
+        if (hasMin && hasMax) {
+            return "[" + formatNumber(range.min()) + ", " + formatNumber(range.max()) + "]";
+        } else if (hasMin) {
+            return "\u2265 " + formatNumber(range.min());
+        } else if (hasMax) {
+            return "\u2264 " + formatNumber(range.max());
+        }
+        return null;
+    }
+
+    private static String formatNumber( double value ) {
+        if (value == Math.rint(value) && Math.abs(value) < 1E15) {
+            return String.valueOf((long) value);
+        }
+        return String.valueOf(value);
     }
 
     private boolean doIgnore( String fieldName ) {
         return fieldName.equals("doProcess");
-    }
-
-    private void addOutput( Access access, ModuleDescription module ) throws Exception {
-        Field field = access.getField();
-        Description descriptionAnn = field.getAnnotation(Description.class);
-        String descriptionStr = "No description available";
-        if (descriptionAnn != null) {
-            descriptionStr = AnnotationUtilities.getLocalizedDescription(descriptionAnn);
-        }
-        StringBuilder sb = new StringBuilder();
-        sb.append(descriptionStr);
-
-        Unit unitAnn = field.getAnnotation(Unit.class);
-        if (unitAnn != null) {
-            sb.append(" [");
-            sb.append(unitAnn.value());
-            sb.append("]");
-        }
-        Range rangeAnn = field.getAnnotation(Range.class);
-        if (rangeAnn != null) {
-            sb.append(" [");
-            sb.append(rangeAnn.min());
-            sb.append(" ,");
-            sb.append(rangeAnn.max());
-            sb.append("]");
-        }
-        descriptionStr = sb.toString();
-
-        String fieldName = field.getName();
-        if (doIgnore(fieldName)) {
-            return;
-        }
-        Class< ? > fieldClass = field.getType();
-        Object fieldValue = access.getFieldValue();
-
-        String defaultValue = ""; //$NON-NLS-1$
-        if (fieldValue != null) {
-            defaultValue = fieldValue.toString();
-        }
-
-        UI uiHintAnn = field.getAnnotation(UI.class);
-        String uiHint = null;
-        if (uiHintAnn != null) {
-            uiHint = uiHintAnn.value();
-        }
-
-        module.addOutput(fieldName, fieldClass.getCanonicalName(), descriptionStr, defaultValue, uiHint);
     }
 
 }

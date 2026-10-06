@@ -14,14 +14,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-
 public class TopologyNode {
 	public int basinId;
 	/**
 	 * The value associated to this node (e.g. area, discharge.).
 	 */
 	public double value = Double.NaN;
-	
+
 	/**
 	 * The accumulated value including all upstream nodes.
 	 */
@@ -53,184 +52,181 @@ public class TopologyNode {
 		// ensure bidirectional link
 		upStreamNode.downStreamNode = this;
 	}
-	
+
 	public boolean isLeafNode() {
 		return upStreamNodes.isEmpty();
 	}
-	
-    /**
-     * Visit this node and all upstream nodes exactly once.
-     *
-     * @param visitor a function to process each node
-     */
-    public void visitUpstream(Consumer<TopologyNode> visitor) {
-        visitUpstream(visitor, new HashSet<>());
-    }
 
-    private void visitUpstream(Consumer<TopologyNode> visitor, Set<TopologyNode> visited) {
-        if (!visited.add(this)) {
-            return; // already visited
-        }
-        // Visit self
-        visitor.accept(this);
+	/**
+	 * Visit this node and all upstream nodes exactly once.
+	 *
+	 * @param visitor a function to process each node
+	 */
+	public void visitUpstream(Consumer<TopologyNode> visitor) {
+		visitUpstream(visitor, new HashSet<>());
+	}
 
-        // Visit all upstream nodes
-        for (TopologyNode up : upStreamNodes) {
-            up.visitUpstream(visitor, visited);
-        }
-    }
+	private void visitUpstream(Consumer<TopologyNode> visitor, Set<TopologyNode> visited) {
+		if (!visited.add(this)) {
+			return; // already visited
+		}
+		// Visit self
+		visitor.accept(this);
 
-    /**
-     * Visit all nodes in the topology, starting from
-     * all leaf nodes and going downstream toward the root.
-     * 
-     * Each node is visited exactly once.
-     * A downstream node is only visited after *all* its upstream nodes
-     * have been visited.
-     *
-     * @param visitor function to apply to each visited node
-     */
-    public void visitDownstreamFromLeaves(Consumer<TopologyNode> visitor) {
-        if (visitor == null) {
-            return;
-        }
+		// Visit all upstream nodes
+		for (TopologyNode up : upStreamNodes) {
+			up.visitUpstream(visitor, visited);
+		}
+	}
 
-        TopologyNode root = getRootNode(this);
+	/**
+	 * Visit all nodes in the topology, starting from all leaf nodes and going
+	 * downstream toward the root.
+	 * 
+	 * Each node is visited exactly once. A downstream node is only visited after
+	 * *all* its upstream nodes have been visited.
+	 *
+	 * @param visitor function to apply to each visited node
+	 */
+	public void visitDownstreamFromLeaves(Consumer<TopologyNode> visitor) {
+		if (visitor == null) {
+			return;
+		}
 
-        // Collect all nodes in this tree
-        Set<TopologyNode> allNodes = new HashSet<>();
-        collectAllUpstreamRecursive(root, allNodes);
+		TopologyNode root = getRootNode(this);
 
-        // Compute number of upstream nodes for each node (indegree)
-        Map<TopologyNode, Integer> upstreamRemaining = new HashMap<>();
-        for (TopologyNode n : allNodes) {
-            upstreamRemaining.put(n, n.upStreamNodes.size());
-        }
+		// Collect all nodes in this tree
+		Set<TopologyNode> allNodes = new HashSet<>();
+		collectAllUpstreamRecursive(root, allNodes);
 
-        // Queue initialized with all leaves (upstream count = 0)
-        Deque<TopologyNode> queue = new ArrayDeque<>();
-        for (TopologyNode n : allNodes) {
-            if (n.upStreamNodes.isEmpty()) {
-                queue.add(n);
-            }
-        }
+		// Compute number of upstream nodes for each node (indegree)
+		Map<TopologyNode, Integer> upstreamRemaining = new HashMap<>();
+		for (TopologyNode n : allNodes) {
+			upstreamRemaining.put(n, n.upStreamNodes.size());
+		}
 
-        Set<TopologyNode> visited = new HashSet<>();
+		// Queue initialized with all leaves (upstream count = 0)
+		Deque<TopologyNode> queue = new ArrayDeque<>();
+		for (TopologyNode n : allNodes) {
+			if (n.upStreamNodes.isEmpty()) {
+				queue.add(n);
+			}
+		}
 
-        // Kahn-style topological traversal
-        while (!queue.isEmpty()) {
-            TopologyNode node = queue.removeFirst();
-            if (!visited.add(node)) {
-                continue;
-            }
+		Set<TopologyNode> visited = new HashSet<>();
 
-            // Visit the node (safe: all upstream nodes already visited)
-            visitor.accept(node);
+		// Kahn-style topological traversal
+		while (!queue.isEmpty()) {
+			TopologyNode node = queue.removeFirst();
+			if (!visited.add(node)) {
+				continue;
+			}
 
-            // Move to downstream node
-            TopologyNode down = node.downStreamNode;
-            if (down != null) {
-                int newCount = upstreamRemaining.get(down) - 1;
-                upstreamRemaining.put(down, newCount);
+			// Visit the node (safe: all upstream nodes already visited)
+			visitor.accept(node);
 
-                // If downstream has no remaining upstream nodes, it can be visited
-                if (newCount == 0) {
-                    queue.addLast(down);
-                }
-            }
-        }
-    }
+			// Move to downstream node
+			TopologyNode down = node.downStreamNode;
+			if (down != null) {
+				int newCount = upstreamRemaining.get(down) - 1;
+				upstreamRemaining.put(down, newCount);
 
-    /**
-     * Collect all nodes upstream of (and including) a given node.
-     * 
-     * @param node the starting node
-     * @param nodes set to collect nodes into
-     */
-    public static void collectAllUpstreamRecursive(TopologyNode node, Set<TopologyNode> nodes) {
-        if (!nodes.add(node)) {
-            return;
-        }
-        for (TopologyNode up : node.upStreamNodes) {
-            collectAllUpstreamRecursive(up, nodes);
-        }
-    }
+				// If downstream has no remaining upstream nodes, it can be visited
+				if (newCount == 0) {
+					queue.addLast(down);
+				}
+			}
+		}
+	}
 
-    /**
-     * Parallel version of the downstream visit.
+	/**
+	 * Collect all nodes upstream of (and including) a given node.
+	 * 
+	 * @param node  the starting node
+	 * @param nodes set to collect nodes into
+	 */
+	public static void collectAllUpstreamRecursive(TopologyNode node, Set<TopologyNode> nodes) {
+		if (!nodes.add(node)) {
+			return;
+		}
+		for (TopologyNode up : node.upStreamNodes) {
+			collectAllUpstreamRecursive(up, nodes);
+		}
+	}
+
+	/**
+	 * Parallel version of the downstream visit.
 	 * 
 	 * A node is only visited after all its upstream nodes have been visited.
 	 * 
-	 * @param numOfThreads number of threads to use or null, to use all available processors.
-	 * @param visitor function to apply to each visited node. This needs to be thread-safe.
-     */
-    public void visitDownstreamFromLeavesParallel(Integer numOfThreads, Consumer<TopologyNode> visitor) {
-        if (visitor == null) {
-            return;
-        }
+	 * @param numOfThreads number of threads to use or null, to use all available
+	 *                     processors.
+	 * @param visitor      function to apply to each visited node. This needs to be
+	 *                     thread-safe.
+	 */
+	public void visitDownstreamFromLeavesParallel(Integer numOfThreads, Consumer<TopologyNode> visitor) {
+		if (visitor == null) {
+			return;
+		}
 
-        TopologyNode root = getRootNode(this);
+		TopologyNode root = getRootNode(this);
 
-        Set<TopologyNode> allNodes = new HashSet<>();
-        collectAllUpstreamRecursive(root, allNodes);
+		Set<TopologyNode> allNodes = new HashSet<>();
+		collectAllUpstreamRecursive(root, allNodes);
 
-        // For each node, track how many upstream nodes are still pending
-        Map<TopologyNode, AtomicInteger> remainingUpstream = new HashMap<>();
-        for (TopologyNode n : allNodes) {
-            remainingUpstream.put(n, new AtomicInteger(n.upStreamNodes.size()));
-        }
+		// For each node, track how many upstream nodes are still pending
+		Map<TopologyNode, AtomicInteger> remainingUpstream = new HashMap<>();
+		for (TopologyNode n : allNodes) {
+			remainingUpstream.put(n, new AtomicInteger(n.upStreamNodes.size()));
+		}
 
-        // Thread pool and latch to wait for completion
-        int nThreads = Math.max(1, numOfThreads != null ? numOfThreads : Runtime.getRuntime().availableProcessors());
-        ExecutorService executor = Executors.newFixedThreadPool(nThreads);
-        CountDownLatch latch = new CountDownLatch(allNodes.size());
+		// Thread pool and latch to wait for completion
+		int nThreads = Math.max(1, numOfThreads != null ? numOfThreads : Runtime.getRuntime().availableProcessors());
+		ExecutorService executor = Executors.newFixedThreadPool(nThreads);
+		CountDownLatch latch = new CountDownLatch(allNodes.size());
 
-        // Submit all leaves (no upstreams) as starting tasks
-        for (TopologyNode n : allNodes) {
-            if (n.upStreamNodes.isEmpty()) {
-                submitNodeTask(n, visitor, remainingUpstream, executor, latch);
-            }
-        }
+		// Submit all leaves (no upstreams) as starting tasks
+		for (TopologyNode n : allNodes) {
+			if (n.upStreamNodes.isEmpty()) {
+				submitNodeTask(n, visitor, remainingUpstream, executor, latch);
+			}
+		}
 
-        // Wait for all tasks to finish
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while waiting for parallel visit to finish", e);
-        } finally {
-            executor.shutdown();
-        }
-    }
+		// Wait for all tasks to finish
+		try {
+			latch.await();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new RuntimeException("Interrupted while waiting for parallel visit to finish", e);
+		} finally {
+			executor.shutdown();
+		}
+	}
 
-    private static void submitNodeTask(
-            TopologyNode node,
-            Consumer<TopologyNode> visitor,
-            Map<TopologyNode, AtomicInteger> remainingUpstream,
-            ExecutorService executor,
-            CountDownLatch latch) {
+	private static void submitNodeTask(TopologyNode node, Consumer<TopologyNode> visitor,
+			Map<TopologyNode, AtomicInteger> remainingUpstream, ExecutorService executor, CountDownLatch latch) {
 
-        executor.submit(() -> {
-            try {
-                // At this point, all upstream nodes have finished their visitor
-                visitor.accept(node);
-            } finally {
-                latch.countDown();
+		executor.submit(() -> {
+			try {
+				// At this point, all upstream nodes have finished their visitor
+				visitor.accept(node);
+			} finally {
+				latch.countDown();
 
-                // Notify downstream node that one upstream has completed
-                TopologyNode down = node.downStreamNode;
-                if (down != null) {
-                    AtomicInteger counter = remainingUpstream.get(down);
-                    if (counter != null) {
-                        // When this reaches zero, all upstreams are done -> schedule downstream
-                        if (counter.decrementAndGet() == 0) {
-                            submitNodeTask(down, visitor, remainingUpstream, executor, latch);
-                        }
-                    }
-                }
-            }
-        });
-    }
+				// Notify downstream node that one upstream has completed
+				TopologyNode down = node.downStreamNode;
+				if (down != null) {
+					AtomicInteger counter = remainingUpstream.get(down);
+					if (counter != null) {
+						// When this reaches zero, all upstreams are done -> schedule downstream
+						if (counter.decrementAndGet() == 0) {
+							submitNodeTask(down, visitor, remainingUpstream, executor, latch);
+						}
+					}
+				}
+			}
+		});
+	}
 
 	@Override
 	public boolean equals(Object obj) {
@@ -289,18 +285,17 @@ public class TopologyNode {
 			}
 		}
 	}
-	
+
 	public static TopologyNode findNodeByBasinId(TopologyNode root, int basinId) {
-	    final TopologyNode[] result = new TopologyNode[1];
-	    root.visitUpstream(node -> {
-	        if (node.basinId == basinId) {
-	            result[0] = node;
-	        }
-	    });
-	    return result[0];
-    }
-	
-	
+		final TopologyNode[] result = new TopologyNode[1];
+		root.visitUpstream(node -> {
+			if (node.basinId == basinId) {
+				result[0] = node;
+			}
+		});
+		return result[0];
+	}
+
 	public static void accumulateDownstream(TopologyNode root) {
 		root.visitDownstreamFromLeaves(node -> {
 			double sum = node.value;
@@ -346,7 +341,7 @@ public class TopologyNode {
 
 		return sb.toString();
 	}
-	
+
 	public String toString() {
 		return toAsciiTree(this);
 	}
@@ -378,119 +373,158 @@ public class TopologyNode {
 			buildAsciiTree(child, childPrefix, childIsLast, visited, sb);
 		}
 	}
-	
-    /**
-     * Deep clone of this node and the whole connected topology graph.
-     * <p>
-     * All reachable nodes (upstream and downstream) are duplicated.
-     * The cloned graph has the same basinIds, value and accumulatedValue
-     * but consists of new TopologyNode instances.
-     *
-     * @return the cloned node corresponding to {@code this}
-     */
-    public TopologyNode clone() {
-        Map<TopologyNode, TopologyNode> visited = new HashMap<>();
-        return cloneInternal(this, visited);
-    }
 
-    /**
-     * Internal recursive helper for deep cloning a topology graph.
-     */
-    private static TopologyNode cloneInternal(TopologyNode original,
-                                              Map<TopologyNode, TopologyNode> visited) {
-        // Already cloned this node?
-        TopologyNode copy = visited.get(original);
-        if (copy != null) {
-            return copy;
-        }
+	/**
+	 * Deep clone of this node and the whole connected topology graph.
+	 * <p>
+	 * All reachable nodes (upstream and downstream) are duplicated. The cloned
+	 * graph has the same basinIds, value and accumulatedValue but consists of new
+	 * TopologyNode instances.
+	 *
+	 * @return the cloned node corresponding to {@code this}
+	 */
+	public TopologyNode clone() {
+		Map<TopologyNode, TopologyNode> visited = new HashMap<>();
+		return cloneInternal(this, visited);
+	}
 
-        // Create the shallow copy
-        copy = new TopologyNode(original.basinId);
-        copy.value = original.value;
-        copy.accumulatedValue = original.accumulatedValue;
-        visited.put(original, copy);
+	/**
+	 * Internal recursive helper for deep cloning a topology graph.
+	 */
+	private static TopologyNode cloneInternal(TopologyNode original, Map<TopologyNode, TopologyNode> visited) {
+		// Already cloned this node?
+		TopologyNode copy = visited.get(original);
+		if (copy != null) {
+			return copy;
+		}
 
-        // Clone upstream links
-        for (TopologyNode upOrig : original.upStreamNodes) {
-            TopologyNode upCopy = cloneInternal(upOrig, visited);
+		// Create the shallow copy
+		copy = new TopologyNode(original.basinId);
+		copy.value = original.value;
+		copy.accumulatedValue = original.accumulatedValue;
+		visited.put(original, copy);
 
-            // maintain bidirectional link in the clone
-            if (!copy.upStreamNodes.contains(upCopy)) {
-                copy.upStreamNodes.add(upCopy);
-            }
-            if (upCopy.downStreamNode != copy) {
-                upCopy.downStreamNode = copy;
-            }
-        }
+		// Clone upstream links
+		for (TopologyNode upOrig : original.upStreamNodes) {
+			TopologyNode upCopy = cloneInternal(upOrig, visited);
 
-        // Clone downstream link
-        if (original.downStreamNode != null) {
-            TopologyNode downCopy = cloneInternal(original.downStreamNode, visited);
-            copy.downStreamNode = downCopy;
+			// maintain bidirectional link in the clone
+			if (!copy.upStreamNodes.contains(upCopy)) {
+				copy.upStreamNodes.add(upCopy);
+			}
+			if (upCopy.downStreamNode != copy) {
+				upCopy.downStreamNode = copy;
+			}
+		}
 
-            if (!downCopy.upStreamNodes.contains(copy)) {
-                downCopy.upStreamNodes.add(copy);
-            }
-        }
+		// Clone downstream link
+		if (original.downStreamNode != null) {
+			TopologyNode downCopy = cloneInternal(original.downStreamNode, visited);
+			copy.downStreamNode = downCopy;
 
-        return copy;
-    }
+			if (!downCopy.upStreamNodes.contains(copy)) {
+				downCopy.upStreamNodes.add(copy);
+			}
+		}
 
-	
-	
+		return copy;
+	}
+
+	/**
+	 * Deep copy of this node and of all the nodes upstream of it.
+	 * <p>
+	 * The copy of this node has no downstream node, so the returned graph is the
+	 * sub-basin closed at this node and can be used as root of a simulation.
+	 * </p>
+	 *
+	 * @return the root of the cloned sub-basin
+	 */
+	public TopologyNode cloneUpstream() {
+		TopologyNode rootCopy = copyValues(this);
+		// iterative, to avoid stack overflows on long networks
+		Deque<TopologyNode[]> stack = new ArrayDeque<>();
+		stack.push(new TopologyNode[] { this, rootCopy });
+		while (!stack.isEmpty()) {
+			TopologyNode[] pair = stack.pop();
+			TopologyNode original = pair[0];
+			TopologyNode copy = pair[1];
+			for (TopologyNode upOriginal : original.upStreamNodes) {
+				TopologyNode upCopy = copyValues(upOriginal);
+				upCopy.downStreamNode = copy;
+				copy.upStreamNodes.add(upCopy);
+				stack.push(new TopologyNode[] { upOriginal, upCopy });
+			}
+		}
+		return rootCopy;
+	}
+
+	private static TopologyNode copyValues(TopologyNode original) {
+		TopologyNode copy = new TopologyNode(original.basinId);
+		copy.value = original.value;
+		copy.accumulatedValue = original.accumulatedValue;
+		return copy;
+	}
 
 	public static void main(String[] args) {
 
 		// Create 10 nodes
-	    TopologyNode n1 = new TopologyNode(1);  n1.value = 10;
-	    TopologyNode n2 = new TopologyNode(2);  n2.value = 20;
-	    TopologyNode n3 = new TopologyNode(3);  n3.value = 30;
-	    TopologyNode n4 = new TopologyNode(4);  n4.value = 40;
-	    TopologyNode n5 = new TopologyNode(5);  n5.value = 50;
-	    TopologyNode n6 = new TopologyNode(6);  n6.value = 60;
-	    TopologyNode n7 = new TopologyNode(7);  n7.value = 70;
-	    TopologyNode n8 = new TopologyNode(8);  n8.value = 80;
-	    TopologyNode n9 = new TopologyNode(9);  n9.value = 90;
-	    TopologyNode n10 = new TopologyNode(10); n10.value = 100;
-	    TopologyNode n11 = new TopologyNode(11); n11.value = 110; // final outlet
+		TopologyNode n1 = new TopologyNode(1);
+		n1.value = 10;
+		TopologyNode n2 = new TopologyNode(2);
+		n2.value = 20;
+		TopologyNode n3 = new TopologyNode(3);
+		n3.value = 30;
+		TopologyNode n4 = new TopologyNode(4);
+		n4.value = 40;
+		TopologyNode n5 = new TopologyNode(5);
+		n5.value = 50;
+		TopologyNode n6 = new TopologyNode(6);
+		n6.value = 60;
+		TopologyNode n7 = new TopologyNode(7);
+		n7.value = 70;
+		TopologyNode n8 = new TopologyNode(8);
+		n8.value = 80;
+		TopologyNode n9 = new TopologyNode(9);
+		n9.value = 90;
+		TopologyNode n10 = new TopologyNode(10);
+		n10.value = 100;
+		TopologyNode n11 = new TopologyNode(11);
+		n11.value = 110; // final outlet
 
-	    // upstream connections
-	    n1.setDownStreamNode(n4);
-	    n2.setDownStreamNode(n5);
-	    n5.setDownStreamNode(n4);
+		// upstream connections
+		n1.setDownStreamNode(n4);
+		n2.setDownStreamNode(n5);
+		n5.setDownStreamNode(n4);
 
-	    n4.setDownStreamNode(n6);
-	    n7.setDownStreamNode(n6);
+		n4.setDownStreamNode(n6);
+		n7.setDownStreamNode(n6);
 
-	    n6.setDownStreamNode(n9);
-	    n10.setDownStreamNode(n8);
-	    n8.setDownStreamNode(n3);
-	    n9.setDownStreamNode(n3);
+		n6.setDownStreamNode(n9);
+		n10.setDownStreamNode(n8);
+		n8.setDownStreamNode(n3);
+		n9.setDownStreamNode(n3);
 
-	    n3.setDownStreamNode(n11);
-		
+		n3.setDownStreamNode(n11);
+
 		TopologyNode rootNode = TopologyNode.getRootNode(n1);
 		accumulateDownstream(rootNode);
 
 		// Print ASCII tree starting from any node (e.g. n2)
 		System.out.println(TopologyNode.toAsciiTree(rootNode));
-		
+
 		// now walk downstream from leaves
 		System.out.println("Visiting downstream from leaves:");
 		rootNode.visitDownstreamFromLeaves(node -> {
-			System.out.println("Visited node basinId=" + node.basinId + ", value=" + node.value + ", accumulatedValue=" + node.accumulatedValue);
+			System.out.println("Visited node basinId=" + node.basinId + ", value=" + node.value + ", accumulatedValue="
+					+ node.accumulatedValue);
 		});
-		
+
 		System.out.println("Visiting downstream from leaves in parallel:");
 		rootNode.visitDownstreamFromLeavesParallel(5, n -> {
-		    // This lambda runs in parallel for independent nodes,
-		    // but always after all upstream nodes are done.
-		    System.out.println(
-		        "Thread " + Thread.currentThread().getName() +
-		        " visiting basin " + n.basinId +
-		        " value=" + n.value +
-		        " acc=" + n.accumulatedValue
-		    );
+			// This lambda runs in parallel for independent nodes,
+			// but always after all upstream nodes are done.
+			System.out.println("Thread " + Thread.currentThread().getName() + " visiting basin " + n.basinId + " value="
+					+ n.value + " acc=" + n.accumulatedValue);
 		});
 	}
 }

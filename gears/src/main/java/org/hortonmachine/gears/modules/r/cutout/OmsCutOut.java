@@ -74,9 +74,9 @@ public class OmsCutOut extends HMModel {
     @Out
     public GridCoverage2D outRaster = null;
 
-    public static final String OMSCUTOUT_DESCRIPTION = "Module for raster thresholding and masking.";
+    public static final String OMSCUTOUT_DESCRIPTION = "Masks a raster with another raster, or with thresholds on its values: the cells outside the mask, or outside the range of the thresholds, become no-data.";
     public static final String OMSCUTOUT_DOCUMENTATION = "OmsCutOut.html";
-    public static final String OMSCUTOUT_KEYWORDS = "Raster, Threshold, OmsMapcalc";
+    public static final String OMSCUTOUT_KEYWORDS = "Raster, Mask, Threshold";
     public static final String OMSCUTOUT_LABEL = RASTERPROCESSING;
     public static final String OMSCUTOUT_NAME = "cutout";
     public static final int OMSCUTOUT_STATUS = 40;
@@ -124,7 +124,8 @@ public class OmsCutOut extends HMModel {
             nRows = maskRaster.getRows();
         }
 
-        HMRaster outHMRaster = HMRaster.fromGridCoverageWritable(inMask);
+        // the output has the grid of the mask, if any
+        HMRaster outHMRaster = HMRaster.fromGridCoverageWritable(inMask != null ? inMask : inRaster);
 
         try {
             pm.beginTask("Processing map...", nRows * nCols);
