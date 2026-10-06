@@ -482,7 +482,7 @@ public class WaterBudgetSimulation extends HMModel {
 		
 		ci = initalConditionsGroundMap[basinId];
 		if (isNovalue(ci)) {
-			ci = 0.01 * s_GroundWaterMax;
+			ci = 0.5 * s_GroundWaterMax;
 		}
 		
 		waterBudgetState.groundInitial = ci;

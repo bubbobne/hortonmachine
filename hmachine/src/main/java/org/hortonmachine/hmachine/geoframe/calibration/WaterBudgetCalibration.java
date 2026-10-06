@@ -124,13 +124,17 @@ public class WaterBudgetCalibration {
 				WaterBudgetParameters.WaterBudgetGroundParameters.eRange(),
 				WaterBudgetParameters.WaterBudgetGroundParameters.fRange() };
 
-		IPSFunction wbFunction = new WaterBudgetCalibrationPsoFunction(timeStepMinutes, observedDischarge, maxBasinId,
-				basinAreas, rootNode, precipReader, tempReader, etpReader, spinUpTimesteps, costFunction, false,
-				true, writeState, pm, printDebugInfo);
+		// particles are evaluated in parallel, so each simulation runs sequentially;
+		// the basins do not depend on upstream ones, so no topological order is needed
+		WaterBudgetCalibrationPsoFunction wbFunction = new WaterBudgetCalibrationPsoFunction(timeStepMinutes,
+				observedDischarge, maxBasinId, basinAreas, rootNode, precipReader, tempReader, etpReader,
+				spinUpTimesteps, costFunction, false, false, writeState, pm, printDebugInfo);
+		wbFunction.setRanges(ranges);
 
 		PSEngine engine = new PSEngine(psConfig.particlesNum, psConfig.maxIterations, psConfig.c1, psConfig.c2, psConfig.w0, psConfig.decay, wbFunction,
 				calibrationThreadCount, "PSO-Waterbudget", pm);
 		engine.setPrintDebug(printDebugInfo);
+		engine.setSeed(psConfig.seed);
 		engine.initializeRanges(ranges);
 
 		// 4. Run the swarm

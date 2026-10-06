@@ -37,6 +37,11 @@ import org.hortonmachine.gears.utils.math.NumericsUtilities;
  */
 public class PSEngine {
 
+	/**
+	 * Default maximum velocity per iteration, as fraction of each parameter range.
+	 */
+	public static final double DEFAULT_MAX_VELOCITY_FRACTION = 0.2;
+
 	private double accelerationFactorLocal;
 	private double accelerationFactorGlobal;
 	private double initDecelerationFactor;
@@ -56,6 +61,8 @@ public class PSEngine {
 	private Integer numOfThreads;
 	private IHMProgressMonitor pm;
 	private boolean printDebug = false;
+	private Long seed = null;
+	private double maxVelocityFraction = DEFAULT_MAX_VELOCITY_FRACTION;
 
 	/**
 	 * Constructor.
@@ -87,6 +94,50 @@ public class PSEngine {
 
 	public void setPrintDebug(boolean printDebug) {
 		this.printDebug = printDebug;
+	}
+
+	/**
+	 * Set the seed of the random generators, to get reproducible runs.
+	 *
+	 * @param seed the seed, or <code>null</code> for a random seed.
+	 */
+	public void setSeed(Long seed) {
+		this.seed = seed;
+	}
+
+	/**
+	 * Set the maximum velocity per iteration of the particles.
+	 *
+	 * @param maxVelocityFraction the fraction of each parameter range (default
+	 *                            {@link #DEFAULT_MAX_VELOCITY_FRACTION}).
+	 */
+	public void setMaxVelocityFraction(double maxVelocityFraction) {
+		this.maxVelocityFraction = maxVelocityFraction;
+	}
+
+	/**
+	 * @return the number of threads to use: the requested one, or the available
+	 *         processors, never more than the particles.
+	 */
+	private int getThreadsNum() {
+		int nThreads = Runtime.getRuntime().availableProcessors();
+		if (numOfThreads != null && numOfThreads > 0) {
+			nThreads = numOfThreads;
+		}
+		return Math.max(1, Math.min(nThreads, particlesNum));
+	}
+
+	/**
+	 * Create the particles, each one with its own random generator derived from
+	 * the engine one, so that the result does not depend on thread scheduling.
+	 */
+	private void initParticles() {
+		rand = seed != null ? new Random(seed) : new Random();
+		swarm = new Particle[particlesNum];
+		for (int j = 0; j < swarm.length; j++) {
+			swarm[j] = new Particle(ranges, new Random(rand.nextLong()));
+			swarm[j].setMaxVelocityFraction(maxVelocityFraction);
+		}
 	}
 
 	/**
@@ -169,12 +220,10 @@ public class PSEngine {
 	}
 
 	private void createSwarm() throws Exception {
-		rand = new Random();
 		iterationStep = 0;
 		globalBestCost = function.getInitialGlobalBest();
-		swarm = new Particle[particlesNum];
+		initParticles();
 		for (int j = 0; j < swarm.length; j++) {
-			swarm[j] = new Particle(ranges);
 			double[] currentLocations = swarm[j].getInitialLocations();
 			double evaluatedCost = function.evaluateCost(iterationStep, j, currentLocations, ranges);
 			swarm[j].setParticleBestFunction(evaluatedCost);
@@ -195,16 +244,15 @@ public class PSEngine {
 	}
 
 	private void createSwarmMultiThreaded() throws Exception {
-		rand = new Random();
 		iterationStep = 0;
 		globalBestCost = function.getInitialGlobalBest();
-		swarm = new Particle[particlesNum];
+		initParticles();
 
 		// globalBestLocations will be initialized lazily once we know the dimension
 		globalBestLocations = null;
 
-		int nThreads = Runtime.getRuntime().availableProcessors();
-		java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(nThreads);
+		java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors
+				.newFixedThreadPool(getThreadsNum());
 
 		java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
 
@@ -212,9 +260,8 @@ public class PSEngine {
 			final int particleIndex = j;
 
 			futures.add(executor.submit(() -> {
-				// create particle and evaluate it
-				Particle p = new Particle(ranges);
-				swarm[particleIndex] = p;
+				// evaluate the initial position of the particle
+				Particle p = swarm[particleIndex];
 
 				double[] currentLocations = p.getInitialLocations();
 				double evaluatedCost = function.evaluateCost(iterationStep, particleIndex, currentLocations, ranges);
@@ -263,15 +310,9 @@ public class PSEngine {
 		/* traverse the particles */
 		for (int i = 0; i < swarm.length; i++) {
 			Particle particle = this.swarm[i];
-			double[] currentLocations = particle.update(w, accelerationFactorLocal, rand.nextDouble(),
-					accelerationFactorGlobal, rand.nextDouble(), globalBestLocations);
-			double evaluatedCost;
-			if (currentLocations != null) {
-				evaluatedCost = function.evaluateCost(iterationStep, i, currentLocations, ranges);
-			} else {
-				// parameters were outside, ignore and try next round with new position
-				continue;
-			}
+			double[] currentLocations = particle.update(w, accelerationFactorLocal, accelerationFactorGlobal,
+					globalBestLocations);
+			double evaluatedCost = function.evaluateCost(iterationStep, i, currentLocations, ranges);
 			/* update best local function value */
 			if (function.isBetter(evaluatedCost, particle.getParticleBestFunction())) {
 				particle.setParticleBestFunction(evaluatedCost);
@@ -292,13 +333,16 @@ public class PSEngine {
 
 		double w = initDecelerationFactor * Math.pow(iterationStep, -decayFactor);
 
-		int nThreads = Runtime.getRuntime().availableProcessors();
-		if (numOfThreads != null && numOfThreads > 0) {
-			nThreads = numOfThreads;
-		}
-		var executor = java.util.concurrent.Executors.newFixedThreadPool(nThreads);
+		var executor = java.util.concurrent.Executors.newFixedThreadPool(getThreadsNum());
 
 		var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
+
+		// all particles of this iteration move towards the same global best, read
+		// from a copy so that no thread sees it while another one is writing it
+		double[] globalBestSnapshot;
+		synchronized (globalLock) {
+			globalBestSnapshot = globalBestLocations.clone();
+		}
 
 		for (int i = 0; i < swarm.length; i++) {
 			final int particleIndex = i;
@@ -306,12 +350,8 @@ public class PSEngine {
 			futures.add(executor.submit(() -> {
 				Particle particle = swarm[particleIndex];
 
-				double[] currentLocations = particle.update(w, accelerationFactorLocal, rand.nextDouble(),
-						accelerationFactorGlobal, rand.nextDouble(), globalBestLocations);
-
-				if (currentLocations == null) {
-					return null; // skip, outside bounds
-				}
+				double[] currentLocations = particle.update(w, accelerationFactorLocal, accelerationFactorGlobal,
+						globalBestSnapshot);
 
 				double evaluatedCost = function.evaluateCost(iterationStep, particleIndex, currentLocations, ranges);
 

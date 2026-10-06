@@ -22,8 +22,9 @@ public class WaterBudgetCalibrationPsoFunction implements IPSFunction {
 	// tune these to taste
 	private final double valueAbsTol = 1e-3; // absolute change in cost
 	private final double valueRelTol = 5e-3; // relative change in cost
-	private final double paramAbsTol = 1e-2; // max change in any parameter
+	private final double paramRelTol = 1e-2; // max change in any parameter, as fraction of its range
 	private final int maxStagnantIterations = 30; // how many stable iters before stopping
+	private double[][] ranges;
 	private Integer spinupTimesteps;
 	private WaterSimulationRunner runner;
 	private CostFunctions costFunction;
@@ -63,6 +64,16 @@ public class WaterBudgetCalibrationPsoFunction implements IPSFunction {
 		return cost;
 	}
 
+	/**
+	 * Set the parameter ranges, used to evaluate the parameter changes relative
+	 * to the range of each parameter in {@link #hasConverged}.
+	 *
+	 * @param ranges the [min, max] ranges, in the same order as the parameters.
+	 */
+	public void setRanges(double[][] ranges) {
+		this.ranges = ranges;
+	}
+
 	@Override
 	public String optimizationDescription() {
 		return "Waterbudget PSO";
@@ -78,16 +89,23 @@ public class WaterBudgetCalibrationPsoFunction implements IPSFunction {
 			return false;
 		}
 
-		// ---------- 1) Parameter change ----------
+		// ---------- 1) Parameter change, relative to the parameter range ----------
 		double maxParamDiff = 0.0;
 		for (int i = 0; i < globalBestLocations.length; i++) {
 			double diff = Math.abs(globalBestLocations[i] - previousBestLocations[i]);
+			if (ranges != null) {
+				double width = ranges[i][1] - ranges[i][0];
+				if (width <= 0) {
+					continue; // fixed parameter
+				}
+				diff = diff / width;
+			}
 			if (diff > maxParamDiff) {
 				maxParamDiff = diff;
 			}
 		}
 
-		boolean paramsStable = maxParamDiff < paramAbsTol;
+		boolean paramsStable = maxParamDiff < paramRelTol;
 
 		// ---------- 2) Value change (using globalBest) ----------
 		double valueImprovement = (previousGlobalBest == null) ? Double.POSITIVE_INFINITY

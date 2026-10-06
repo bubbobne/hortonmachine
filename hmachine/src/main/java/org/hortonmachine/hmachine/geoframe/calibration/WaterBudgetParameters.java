@@ -113,7 +113,7 @@ public class WaterBudgetParameters {
 		}
 
 		public static double[] alfaLRange() {
-			return new double[] { 0.01, 0.3 };
+			return new double[] { 0.01, 0.5 };
 		}
 	}
 
@@ -132,7 +132,7 @@ public class WaterBudgetParameters {
 		}
 
 		public static double[] pRange() {
-			return new double[] { 0.5, 0.98 };
+			return new double[] { 0.2, 0.98 };
 		}
 
 	}
@@ -168,7 +168,7 @@ public class WaterBudgetParameters {
 		}
 
 		public static double[] pBSoilRange() {
-			return new double[] { 0.5, 3.0 };
+			return new double[] { 0.1, 3.0 };
 		}
 
 	}

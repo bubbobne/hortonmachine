@@ -52,39 +52,49 @@ public class Particle {
     private double[][] ranges;
 
     private double[] initialLocations;
-    private double[] tmpLocations = null;
 
-    private static Random rand = new Random(2);
+    /**
+     * Random generator of this particle, so that particles updated in parallel
+     * do not share (and contend) a generator and results stay reproducible.
+     */
+    private Random rand;
+
+    /**
+     * Maximum velocity per iteration, as fraction of each parameter range.
+     */
+    private double maxVelocityFraction = PSEngine.DEFAULT_MAX_VELOCITY_FRACTION;
 
     /**
      * Create a new {@link Particle} with a given number of parameters dimension.
-     * 
+     *
      * @param ranges the parameters spaces ranges.
      */
     public Particle( double[][] ranges ) {
+        this(ranges, new Random());
+    }
+
+    /**
+     * Create a new {@link Particle} with a given number of parameters dimension.
+     *
+     * @param ranges the parameters spaces ranges.
+     * @param rand the random generator to use for this particle.
+     */
+    public Particle( double[][] ranges, Random rand ) {
         this.ranges = ranges;
+        this.rand = rand;
 
         /*
-         * initialize random positions inside the 
-         * parameter space
+         * initialize random positions uniformly over the
+         * whole parameter space
          */
         double[] r = new double[ranges.length];
         for( int i = 0; i < r.length; i++ ) {
             double min = ranges[i][0];
             double max = ranges[i][1];
-
-            double delta = max - min;
-            double random = rand.nextDouble() - 1;
-            double smallRand = 0.5 * delta * random;
-            double value = min + delta / 2.0 + 0.8 * smallRand;
-
-            // System.out.println(min + "/" + max + "/" + value);
-            r[i] = value;
+            r[i] = min + (max - min) * rand.nextDouble();
         }
-//        System.out.println("INIT PARTICLE WITH: " + Arrays.toString(r));
 
         locations = r;
-        tmpLocations = new double[locations.length];
         initialLocations = new double[locations.length];
 
         System.arraycopy(locations, 0, initialLocations, 0, r.length);
@@ -106,70 +116,56 @@ public class Particle {
     }
 
     /**
-     * Particle swarming formula to update positions.
-     * 
-     * @param w inertia weight (controls the impact of the past velocity of the
-     *              particle over the current one). 
-     * @param c1 constant weighting the influence of local best 
-     *              solutions.
-     * @param rand1 random factor introduced in search process.
-     * @param c2 constant weighting the influence of global best 
-     *              solutions.
-     * @param rand2 random factor introduced in search process.
-     * @param globalBest leader particle (global best) in all dimensions.
-     * @return the updated locations or <code>null</code>, if they are outside the ranges.
+     * Set the maximum velocity per iteration, as fraction of each parameter range.
+     *
+     * @param maxVelocityFraction the fraction (e.g. 0.2 = 20% of the range).
      */
-    public double[] update( double w, double c1, double rand1, double c2, double rand2, double[] globalBest ) {
+    public void setMaxVelocityFraction( double maxVelocityFraction ) {
+        this.maxVelocityFraction = maxVelocityFraction;
+    }
+
+    /**
+     * Particle swarming formula to update positions.
+     *
+     * <p>
+     * Random factors are drawn independently for each dimension, the velocity is
+     * clamped to {@link #maxVelocityFraction} of the range and the ranges act as
+     * absorbing walls: a location falling outside is set on the boundary and its
+     * velocity in that dimension is zeroed, so the particle is always evaluated.
+     * </p>
+     *
+     * @param w inertia weight (controls the impact of the past velocity of the
+     *              particle over the current one).
+     * @param c1 constant weighting the influence of local best
+     *              solutions.
+     * @param c2 constant weighting the influence of global best
+     *              solutions.
+     * @param globalBest leader particle (global best) in all dimensions.
+     * @return the updated locations.
+     */
+    public double[] update( double w, double c1, double c2, double[] globalBest ) {
         for( int i = 0; i < locations.length; i++ ) {
-            particleVelocities[i] = w * particleVelocities[i] + //
-                    c1 * rand1 * (particleLocalBests[i] - locations[i]) + //
-                    c2 * rand2 * (globalBest[i] - locations[i]);
+            double min = ranges[i][0];
+            double max = ranges[i][1];
+            double maxVelocity = maxVelocityFraction * (max - min);
 
-            double tmpLocation = locations[i] + particleVelocities[i];
-            /*
-             * if the location falls outside the ranges, it should  
-             * not be moved.
-             */
+            double velocity = w * particleVelocities[i] + //
+                    c1 * rand.nextDouble() * (particleLocalBests[i] - locations[i]) + //
+                    c2 * rand.nextDouble() * (globalBest[i] - locations[i]);
+            velocity = Math.max(-maxVelocity, Math.min(maxVelocity, velocity));
 
-            tmpLocations[i] = tmpLocation;
-        }
-
-        if (!PSEngine.parametersInRange(tmpLocations, ranges)) {
-            // System.out.println("PRE-TMPLOCATIONS: " + Arrays.toString(tmpLocations));
-            // System.out.println("LOCATIONS: " + Arrays.toString(locations));
-            /*
-             * mirror the value back
-             */
-            for( int i = 0; i < tmpLocations.length; i++ ) {
-                double min = ranges[i][0];
-                double max = ranges[i][1];
-
-                if (tmpLocations[i] > max) {
-                    double tmp = max - (tmpLocations[i] - max);
-                    if (tmp < min) {
-                        tmp = max;
-                    }
-                    locations[i] = tmp;
-                } else if (tmpLocations[i] < min) {
-                    double tmp = min + (min - tmpLocations[i]);
-                    if (tmp > max) {
-                        tmp = min;
-                    }
-                    locations[i] = tmp;
-                } else {
-                    locations[i] = tmpLocations[i];
-                }
+            double location = locations[i] + velocity;
+            if (location < min) {
+                location = min;
+                velocity = 0.0;
+            } else if (location > max) {
+                location = max;
+                velocity = 0.0;
             }
-
-            // System.out.println("POST-LOCATIONS: " + Arrays.toString(locations));
-            // System.out.println("VELOCITIES: " + Arrays.toString(particleVelocities));
-            return null;
-        } else {
-            for( int i = 0; i < locations.length; i++ ) {
-                locations[i] = tmpLocations[i];
-            }
-            return locations;
+            particleVelocities[i] = velocity;
+            locations[i] = location;
         }
+        return locations;
     }
 
     /**

@@ -36,21 +36,25 @@ public class ErmCalibration extends ErmBase {
 	@In
 	public int pParticlesNum = 20;
 
-	@Description("PSO cognitive acceleration constant (c1).")
+	@Description("PSO cognitive acceleration constant (c1). The default is Clerc's constriction value.")
 	@In
-	public double pC1 = 2.0;
+	public double pC1 = 1.49618;
 
-	@Description("PSO social acceleration constant (c2).")
+	@Description("PSO social acceleration constant (c2). The default is Clerc's constriction value.")
 	@In
-	public double pC2 = 2.0;
+	public double pC2 = 1.49618;
 
-	@Description("PSO initial inertia weight (w0).")
+	@Description("PSO initial inertia weight (w0). The default is Clerc's constriction value.")
 	@In
-	public double pW0 = 0.9;
+	public double pW0 = 0.7298;
 
-	@Description("PSO inertia weight decay factor.")
+	@Description("PSO inertia weight decay factor: w = w0 * iteration^-decay. 0 keeps the inertia constant.")
 	@In
-	public double pDecay = 0.4;
+	public double pDecay = 0.0;
+
+	@Description("Seed of the random generators, to get reproducible calibrations (null for a random seed).")
+	@In
+	public Long pSeed = 2L;
 
 	@Description("Number of parallel threads for calibration.")
 	@In
@@ -84,9 +88,10 @@ public class ErmCalibration extends ErmBase {
 			psConfig.particlesNum = pParticlesNum;
 			psConfig.maxIterations = pPsoIterations;
 			psConfig.c1 = pC1;
-			psConfig.c2 = pC2;
+			psConfig.c2 = pC2; 
 			psConfig.w0 = pW0;
 			psConfig.decay = pDecay;
+			psConfig.seed = pSeed;
 			observedDischarge = IWaterBudgetSimulationRunner.getObservedDischarge(db, rootNode, inFromTimestamp, inToTimestamp);
 			WaterBudgetCalibrationResult psoCalibrationResult = WaterBudgetCalibration.psoCalibration(psConfig,
 					maxBasinId, basinAreas, rootNode, pTimeStepMinutes, observedDischarge, pCostFunction,

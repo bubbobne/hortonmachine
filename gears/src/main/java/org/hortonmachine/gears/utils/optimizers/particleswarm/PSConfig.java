@@ -7,4 +7,8 @@ public class PSConfig {
 	public double c2 = 2.0;
 	public double w0 = 0.9;
 	public double decay = 0.4;
+	/**
+	 * Seed of the random generators, <code>null</code> for a random seed.
+	 */
+	public Long seed = null;
 }
