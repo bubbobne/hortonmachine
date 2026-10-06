@@ -5,8 +5,8 @@ package org.hortonmachine.hmachine.geoframe.ermworkflow;
  */
 public class ErmCommonData {
 	
-	public static String START_TIMESTAMP = "2015-10-01 01:00";
-	public static String END_TIMESTAMP = "2019-12-01 01:00";
+	public static String START_TIMESTAMP = "2015-12-31 23:00";
+	public static String END_TIMESTAMP = "2018-12-31 23:00";
 	public static String START_VALIDATION_TIMESTAMP = "2020-10-01 01:00";
 	public static String END_VALIDATION_TIMESTAMP = "2023-10-01 01:00";
 	public static String TIME_RESOLUTION = "HOURLY";
