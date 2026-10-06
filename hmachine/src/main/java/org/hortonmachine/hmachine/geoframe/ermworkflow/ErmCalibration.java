@@ -92,7 +92,6 @@ public class ErmCalibration extends ErmBase {
 			psConfig.w0 = pW0;
 			psConfig.decay = pDecay;
 			psConfig.seed = pSeed;
-			observedDischarge = IWaterBudgetSimulationRunner.getObservedDischarge(db, rootNode, inFromTimestamp, inToTimestamp);
 			WaterBudgetCalibrationResult psoCalibrationResult = WaterBudgetCalibration.psoCalibration(psConfig,
 					maxBasinId, basinAreas, rootNode, pTimeStepMinutes, observedDischarge, pCostFunction,
 					pCalibrationThreadCount, precipReader, tempReader, etpReader, runner, spinUpTimesteps, doWriteState,
@@ -114,7 +113,7 @@ public class ErmCalibration extends ErmBase {
 		cal.inFromTimestamp = ErmCommonData.START_TIMESTAMP + ":00";
 		cal.inToTimestamp = ErmCommonData.END_TIMESTAMP + ":00";
 		cal.pTimeStepMinutes = 60;
-		cal.pSpinUpDays = 365;
+		cal.pSpinUpDays = 445;
 		cal.pPsoIterations = 300;
 		cal.pParticlesNum = 20;
 		cal.doWriteState = false;
