@@ -73,7 +73,8 @@ public class Lwrb extends HMModel {
 	public HashMap<Integer, double[]> inSoilTempratureValuesHM;
 
 	@Description("Reference humidity")
-	private static final double pRH = 0.7;
+	//TODO check, I set 60 because it should be relative humidity, but later it's divided by 100.
+	private static final double pRH = 60;
 
 	@Description("Humidity input Hashmap")
 	@In
